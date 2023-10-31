@@ -251,7 +251,8 @@ public actor MediaAssetLoader {
     
     public func fetchVideos(
         dateRange: ClosedRange<Date>,
-        filterOptions: MediaFilterOptions
+        filterOptions: MediaFilterOptions,
+        configure: ((PHFetchOptions) -> Void)? = nil
     ) async -> PHFetchTracableResult? {
         let fromDate = dateRange.lowerBound
         let toDate = dateRange.upperBound
@@ -271,6 +272,10 @@ public actor MediaAssetLoader {
         allVideosOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         allVideosOptions.predicate = NSPredicate(format: "creationDate >= %@ && creationDate <= %@ && (pixelWidth > 1920 || pixelHeight > 1920)",
                                                  argumentArray: [fromDate, toDate])
+        
+        if let configure = configure {
+            configure(allVideosOptions)
+        }
         
         let allVideos = PHAsset.fetchAssets(in: videoCollection, options: allVideosOptions)
         
@@ -296,7 +301,8 @@ public actor MediaAssetLoader {
     public func fetchPhotosByCollection(
         dateRange: ClosedRange<Date>,
         collection: PHAssetCollection,
-        loadAssetResourcesInPlaceTypes: [UTType]
+        loadAssetResourcesInPlaceTypes: [UTType],
+        configure: ((PHFetchOptions) -> Void)? = nil
     ) async -> PHFetchTracableResult? {
         let fromDate = dateRange.lowerBound
         let toDate = dateRange.upperBound
@@ -305,6 +311,9 @@ public actor MediaAssetLoader {
         allPhotosOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         allPhotosOptions.predicate = NSPredicate(format: "creationDate >= %@ && creationDate <= %@",
                                                  argumentArray: [fromDate, toDate])
+        if let configure = configure {
+            configure(allPhotosOptions)
+        }
         
         let allPhotos = PHAsset.fetchAssets(in: collection, options: allPhotosOptions)
         
@@ -323,7 +332,8 @@ public actor MediaAssetLoader {
     @available(iOS 15.0, macOS 12.0, *)
     public func fetchRawPhotosBySmartCollection(
         dateRange: ClosedRange<Date>,
-        loadAssetResourcesInPlace: Bool
+        loadAssetResourcesInPlace: Bool,
+        configure: ((PHFetchOptions) -> Void)? = nil
     ) async -> PHFetchTracableResult? {
         let options = PHFetchOptions()
         
@@ -344,7 +354,8 @@ public actor MediaAssetLoader {
         return await fetchPhotosByCollection(
             dateRange: dateRange,
             collection: rawCollection,
-            loadAssetResourcesInPlaceTypes: []
+            loadAssetResourcesInPlaceTypes: [],
+            configure: configure
         )
     }
     

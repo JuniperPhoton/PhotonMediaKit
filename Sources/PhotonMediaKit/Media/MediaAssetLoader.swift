@@ -47,7 +47,7 @@ public actor MediaAssetLoader {
         // empty
     }
     
-#if os(iOS)
+#if canImport(UIKit)
     @available(iOS 15.0, *)
     public func fetchUIImage(
         phAsset: PHAsset,
@@ -89,7 +89,7 @@ public actor MediaAssetLoader {
         }
     }
     
-    @available(iOS 15.0, *)
+    @available(iOS 15.0, tvOS 15.0, *)
     public func fetchFullUIImage(
         phAsset: PHAsset,
         version: MediaAssetVersion

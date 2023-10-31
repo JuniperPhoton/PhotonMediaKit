@@ -39,7 +39,7 @@ public actor CIImageIO {
         return file != nil
     }
     
-    @available(iOS 17.0, macOS 14.0, *)
+    @available(iOS 17.0, macOS 14.0, tvOS 17.0, *)
     public func saveHDRImage(data: Data,
                              asset: PHAsset,
                              resource: PHAssetResource) async throws -> Bool {
@@ -90,7 +90,7 @@ public actor CIImageIO {
         return await MediaAssetWriter.shared.saveMediaFileToAlbum(file: outputFile, deleteOnComplete: true)
     }
     
-    @available(iOS 17.0, macOS 14.0, *)
+    @available(iOS 17.0, macOS 14.0, tvOS 17.0, *)
     private func saveUsingCIImageWithHDR(data: Data,
                                          toURL: URL,
                                          originalIdentifier: String) async throws -> URL {

@@ -333,7 +333,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     
     func provideContentView(uiImage: UIImage) -> UIImageView? {
         let view = UIImageView(image: uiImage)
-        if #available(iOS 17.0, macOS 14.0, *) {
+        if #available(iOS 17.0, macOS 14.0, tvOS 17.0, *) {
             if uiImage.isHighDynamicRange {
                 LibLogger.libDefault.log("set preferredImageDynamicRange to high")
                 view.preferredImageDynamicRange = .high

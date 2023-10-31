@@ -20,6 +20,7 @@ let package = Package(
         // Dependencies declare other packages that this package depends on.
         // .package(url: /* package url */, from: "1.0.0"),
         .package(url: "https://github.com/JuniperPhoton/PhotonUtilityKit", from: "1.3.0"),
+        .package(url: "https://github.com/layoutBox/PinLayout", from: "1.10.4")
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -37,7 +38,8 @@ let package = Package(
             name: "PhotonMediaKitUI",
             dependencies: [
                 "PhotonMediaKit",
-                "PhotonUtilityKit"
+                "PhotonUtilityKit",
+                .product(name: "PinLayout", package: "PinLayout")
             ]
         ),
         .testTarget(

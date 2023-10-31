@@ -24,7 +24,7 @@ public class EDRUtils {
     }
     
     public static var supportEDRByDevice: Bool {
-        if #available(iOS 17.0, macOS 14.0, *) {
+        if #available(iOS 17.0, macOS 14.0, tvOS 16.0, *) {
 #if canImport(UIKit)
             UIScreen.main.potentialEDRHeadroom > 1.0
 #elseif canImport(AppKit)

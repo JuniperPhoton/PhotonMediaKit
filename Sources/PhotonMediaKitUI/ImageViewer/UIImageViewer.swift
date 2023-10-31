@@ -9,10 +9,10 @@ import Foundation
 import Photos
 import SwiftUI
 import PhotonMediaKit
+import PinLayout
 
 #if canImport(UIKit)
 import UIKit
-import PinLayout
 
 /// An object to sync information between cell view and ``UIImageViewer``.
 @MainActor

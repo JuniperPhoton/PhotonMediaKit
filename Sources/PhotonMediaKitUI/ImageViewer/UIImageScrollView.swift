@@ -82,7 +82,15 @@ class UIImageScrollView: UIScrollView {
         decelerationRate = UIScrollView.DecelerationRate.fast
         delegate = self
         
-        NotificationCenter.default.addObserver(self, selector: #selector(UIImageScrollView.changeOrientationNotification), name: UIDevice.orientationDidChangeNotification, object: nil)
+#if os(iOS)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(UIImageScrollView.changeOrientationNotification),
+            
+            name: UIDevice.orientationDidChangeNotification,
+            object: nil
+        )
+#endif
     }
     
     func adjustFrameToCenter() {

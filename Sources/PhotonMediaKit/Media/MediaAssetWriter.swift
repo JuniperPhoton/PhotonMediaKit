@@ -32,15 +32,46 @@ public class MediaAssetWriter {
         return true
     }
     
+    public func createOrGetCollection(title: String) async -> PHAssetCollection? {
+        let getCollection = {
+            let fetchOptions = PHFetchOptions()
+            fetchOptions.predicate = NSPredicate(format: "title = %@", title)
+            
+            return PHAssetCollection
+                .fetchAssetCollections(with: .album, subtype: .any, options: fetchOptions)
+                .firstObject
+        }
+        
+        return await withCheckedContinuation { continuation in
+            if let collection = getCollection() {
+                continuation.resume(returning: collection)
+            } else {
+                PHPhotoLibrary.shared().performChanges {
+                    let _ = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: title)
+                } completionHandler: { success, error in
+                    if success, let collection = getCollection() {
+                        continuation.resume(returning: collection)
+                    } else {
+                        continuation.resume(returning: nil)
+                    }
+                }
+            }
+        }
+    }
+    
 #if os(iOS)
-    public func saveImageToAlbum(uiImage: UIImage) async throws -> Bool {
+    public func saveImageToAlbum(
+        uiImage: UIImage,
+        collection: PHAssetCollection? = nil
+    ) async throws -> Bool {
         if !(await requestForPermission()) {
             throw AccessError()
         }
         
         return await withCheckedContinuation { continuation in
             PHPhotoLibrary.shared().performChanges {
-                let _ = PHAssetCreationRequest.creationRequestForAsset(from: uiImage)
+                let creation = PHAssetCreationRequest.creationRequestForAsset(from: uiImage)
+                collection?.addAsset(creation: creation)
             } completionHandler: { success, error in
                 continuation.resume(returning: success)
             }
@@ -51,6 +82,7 @@ public class MediaAssetWriter {
     public func saveMediaFileToAlbum(
         rawURL: URL,
         processedURL: URL? = nil,
+        collection: PHAssetCollection? = nil,
         location: CLLocation? = nil,
         deleteOnComplete: Bool
     ) async -> Bool {
@@ -78,6 +110,8 @@ public class MediaAssetWriter {
                         options: options
                     )
                 }
+                
+                collection?.addAsset(creation: creationRequest)
             } completionHandler: { success, error in
                 print("save media result: \(success) error: \(String(describing: error))")
                 
@@ -100,6 +134,7 @@ public class MediaAssetWriter {
     public func saveMediaFileToAlbum(
         processedURL: URL,
         rawURL: URL? = nil,
+        collection: PHAssetCollection? = nil,
         location: CLLocation? = nil,
         deleteOnComplete: Bool
     ) async -> Bool {
@@ -127,6 +162,8 @@ public class MediaAssetWriter {
                         options: options
                     )
                 }
+                
+                collection?.addAsset(creation: creationRequest)
             } completionHandler: { success, error in
                 LibLogger.libDefault.log("save media result: \(success) error: \(String(describing: error))")
                 
@@ -148,17 +185,22 @@ public class MediaAssetWriter {
     
     public func saveMediaFileToAlbum(
         file: URL,
+        collection: PHAssetCollection? = nil,
         location: CLLocation? = nil,
         deleteOnComplete: Bool
     ) async -> Bool {
         return await withCheckedContinuation { continuation in
             PHPhotoLibrary.shared().performChanges {
                 if file.isImage() {
-                    let creation = PHAssetCreationRequest.creationRequestForAssetFromImage(atFileURL: file.absoluteURL)
-                    creation?.location = location
+                    if let creation = PHAssetCreationRequest.creationRequestForAssetFromImage(atFileURL: file.absoluteURL) {
+                        creation.location = location
+                        collection?.addAsset(creation: creation)
+                    }
                 } else {
-                    let creation = PHAssetCreationRequest.creationRequestForAssetFromVideo(atFileURL: file.absoluteURL)
-                    creation?.location = location
+                    if let creation = PHAssetCreationRequest.creationRequestForAssetFromVideo(atFileURL: file.absoluteURL) {
+                        creation.location = location
+                        collection?.addAsset(creation: creation)
+                    }
                 }
             } completionHandler: { success, error in
                 LibLogger.libDefault.log("save media result: \(success) error: \(String(describing: error)), deleteOnComplete: \(deleteOnComplete)")
@@ -245,5 +287,22 @@ public class MediaAssetWriter {
         }
         
         return url
+    }
+}
+
+fileprivate extension PHAssetCollection {
+    @discardableResult
+    func addAsset(creation: PHAssetCreationRequest) -> Bool {
+        guard let request = PHAssetCollectionChangeRequest(for: self) else {
+            return false
+        }
+        
+        guard let placeholder = creation.placeholderForCreatedAsset else {
+            return false
+        }
+        
+        request.addAssets([placeholder] as NSArray)
+        
+        return true
     }
 }

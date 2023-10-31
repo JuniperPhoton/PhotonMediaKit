@@ -276,9 +276,10 @@ public actor MediaAssetLoader {
         
         LibLogger.mediaLoader.log("begin enumerateObjects all videos")
         
-        var rawVideos = fetchAssetWithRes(allPhotos: allVideos,
-                                          loadAssetResourcesInPlace: true,
-                                          forUTTypes: [.video, .movie])
+        var rawVideos = fetchAssetWithRes(
+            allPhotos: allVideos,
+            loadAssetResourcesInPlaceTypes: [.video, .movie]
+        )
         
         if filterOptions.isFilterOn {
             rawVideos = rawVideos.filter { asset in
@@ -292,17 +293,47 @@ public actor MediaAssetLoader {
     }
     
     @available(iOS 15.0, macOS 12.0, *)
-    public func fetchRawPhotosBySmartCollection(
+    public func fetchPhotosByCollection(
         dateRange: ClosedRange<Date>,
-        loadAssetResourcesInPlace: Bool
+        collection: PHAssetCollection,
+        loadAssetResourcesInPlaceTypes: [UTType]
     ) async -> PHFetchTracableResult? {
         let fromDate = dateRange.lowerBound
         let toDate = dateRange.upperBound
         
+        let allPhotosOptions = PHFetchOptions()
+        allPhotosOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        allPhotosOptions.predicate = NSPredicate(format: "creationDate >= %@ && creationDate <= %@",
+                                                 argumentArray: [fromDate, toDate])
+        
+        let allPhotos = PHAsset.fetchAssets(in: collection, options: allPhotosOptions)
+        
+        LibLogger.mediaLoader.log("begin enumerateObjects all photos")
+        
+        let rawImages = fetchAssetWithRes(
+            allPhotos: allPhotos,
+            loadAssetResourcesInPlaceTypes: loadAssetResourcesInPlaceTypes
+        )
+        
+        LibLogger.mediaLoader.log("end enumerateObjects all photos \(rawImages.count)")
+        
+        return PHFetchTracableResult(allPhotos, rawImages)
+    }
+    
+    @available(iOS 15.0, macOS 12.0, *)
+    public func fetchRawPhotosBySmartCollection(
+        dateRange: ClosedRange<Date>,
+        loadAssetResourcesInPlace: Bool
+    ) async -> PHFetchTracableResult? {
         let options = PHFetchOptions()
         
-        LibLogger.mediaLoader.log("begin fetch raw collections from \(fromDate) to \(toDate)")
-        let collections = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: .smartAlbumRAW, options: options)
+        LibLogger.mediaLoader.log("begin fetch raw collections from \(dateRange)")
+        
+        let collections = PHAssetCollection.fetchAssetCollections(
+            with: .smartAlbum,
+            subtype: .smartAlbumRAW,
+            options: options
+        )
         
         LibLogger.mediaLoader.log("end fetch raw collections, count \(collections.count)")
         
@@ -310,21 +341,11 @@ public actor MediaAssetLoader {
             return nil
         }
         
-        let allPhotosOptions = PHFetchOptions()
-        allPhotosOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-        allPhotosOptions.predicate = NSPredicate(format: "creationDate >= %@ && creationDate <= %@",
-                                                 argumentArray: [fromDate, toDate])
-        
-        let allPhotos = PHAsset.fetchAssets(in: rawCollection, options: allPhotosOptions)
-        
-        LibLogger.mediaLoader.log("begin enumerateObjects all photos")
-        
-        let rawImages = fetchAssetWithRes(allPhotos: allPhotos, loadAssetResourcesInPlace: false,
-                                          forUTTypes: [.rawImage])
-        
-        LibLogger.mediaLoader.log("end enumerateObjects all photos \(rawImages.count)")
-        
-        return PHFetchTracableResult(allPhotos, rawImages)
+        return await fetchPhotosByCollection(
+            dateRange: dateRange,
+            collection: rawCollection,
+            loadAssetResourcesInPlaceTypes: []
+        )
     }
     
     public func loadAssetResources(
@@ -348,18 +369,17 @@ public actor MediaAssetLoader {
     
     private func fetchAssetWithRes(
         allPhotos: PHFetchResult<PHAsset>,
-        loadAssetResourcesInPlace: Bool,
-        forUTTypes: [UTType]
+        loadAssetResourcesInPlaceTypes: [UTType]
     ) -> [MediaAssetRes] {
         var results: [MediaAssetRes] = []
         
-        LibLogger.mediaLoader.log("begin enumerateObjects all photos \(allPhotos.count), forUTTypes \(String(describing: forUTTypes.joinToString()))")
+        LibLogger.mediaLoader.log("begin enumerateObjects all photos \(allPhotos.count), forUTTypes \(String(describing: loadAssetResourcesInPlaceTypes.joinToString()))")
         
         allPhotos.enumerateObjects { asset, i, stop in
             if !Task.isCancelled {
-                if loadAssetResourcesInPlace {
+                if !loadAssetResourcesInPlaceTypes.isEmpty {
                     let res = self.loadAssetResources(for: asset,
-                                                      forUTTypes: forUTTypes)
+                                                      forUTTypes: loadAssetResourcesInPlaceTypes)
                     if let nonNilRes = res {
                         results.append(MediaAssetRes(phAsset: asset, resource: nonNilRes))
                     }

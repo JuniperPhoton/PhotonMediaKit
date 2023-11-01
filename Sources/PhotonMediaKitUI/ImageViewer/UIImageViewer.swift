@@ -77,7 +77,6 @@ public class UIImageViewer<
         }
         
         setCurrentController()
-        updateOrnamentUI()
 
         if let scrollView = getScrollView() {
             let pan = UIPanGestureRecognizer(target: self, action: #selector(onPan))
@@ -123,6 +122,7 @@ public class UIImageViewer<
         
         currentViewController = controller
         setViewControllers([controller], direction: .forward, animated: true)
+        updateOrnamentUI()
     }
     
     public override func viewDidAppear(_ animated: Bool) {
@@ -204,7 +204,7 @@ public class UIImageViewer<
     }
     
     public func requestDelete(phAsset: PHAsset) {
-        Task {
+        Task { @MainActor in
             if await MediaAssetWriter.shared.delete(asset: phAsset) {
                 let index = self.images.firstIndex { provider in
                     provider.phAssetRes.phAsset.localIdentifier == phAsset.localIdentifier

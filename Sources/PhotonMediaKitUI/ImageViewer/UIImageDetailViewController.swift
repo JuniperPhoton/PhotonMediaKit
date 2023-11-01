@@ -69,6 +69,8 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         
         if startFrame != .zero {
             loadImageForTransition()
+        } else {
+            loadFullImage()
         }
     }
     

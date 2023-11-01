@@ -30,17 +30,18 @@ public class CellLocationSyncer: ObservableObject {
 
 public class UIImageViewer<
     AssetProvider: MediaAssetProvider,
-    TitleBarProvider: UIImageViewerTitleBarProvider
->: UIPageViewController, UIGestureRecognizerDelegate, UIPageViewControllerDataSource, UIPageViewControllerDelegate where TitleBarProvider.AssetProvider == AssetProvider {
+    OrnamentProvider: UIImageViewerOrnamentProvider
+>: UIPageViewController, UIImageViewerEditSourceProvider, UIGestureRecognizerDelegate, UIPageViewControllerDataSource, UIPageViewControllerDelegate where OrnamentProvider.AssetProvider == AssetProvider {
     var syncer: CellLocationSyncer = CellLocationSyncer()
     var onRequestDismiss: ((Bool) -> Void)? = nil
     var animatedDismissToStartLocation = false
     
     private(set) var images: [AssetProvider] = []
     
-    var titleBarProvider: TitleBarProvider? = nil
+    var ornamentProvider: OrnamentProvider? = nil
     
-    private var titleView: UIHostingController<TitleBarProvider.ContentView>? = nil
+    private var titleView: UIHostingController<OrnamentProvider.TitleBarContentView>? = nil
+    private var toolBarView: UIHostingController<OrnamentProvider.ToolBarContentView>? = nil
     private var currentViewController: UIImageDetailViewController<AssetProvider>? = nil
     
     private lazy var gradientLayer = {
@@ -51,8 +52,11 @@ public class UIImageViewer<
     }()
     
     private lazy var titleBarContainer: UIView = {
-        let view = UIView()
-        return view
+        return UIView()
+    }()
+    
+    private lazy var toolBarContainer: UIView = {
+        return UIView()
     }()
     
     func setImages(_ images: [AssetProvider]) {
@@ -72,13 +76,9 @@ public class UIImageViewer<
             self.view.backgroundColor = .black
         }
         
-        let firstImage = images[syncer.currentIndex]
-        let controller = createDetailController(for: firstImage)
-        controller.startFrame = syncer.currentFrame
-        currentViewController = controller
-        updateTitleBar()
-        setViewControllers([controller], direction: .forward, animated: true)
-        
+        setCurrentController()
+        updateOrnamentUI()
+
         if let scrollView = getScrollView() {
             let pan = UIPanGestureRecognizer(target: self, action: #selector(onPan))
             pan.delegate = self
@@ -86,14 +86,35 @@ public class UIImageViewer<
         }
         
         self.view.addSubview(titleBarContainer)
+        self.view.addSubview(toolBarContainer)
         
-        if let titleBarProvider = titleBarProvider {
-            let view = titleBarProvider.provideView()
-            let titleView = UIHostingController(rootView: view)
+        if let ornamentProvider = ornamentProvider {
+            let titleView = UIHostingController(rootView: ornamentProvider.provideTitleBarView())
             titleView.view.backgroundColor = UIColor.clear
+            
             self.titleView = titleView
             titleBarContainer.addSubview(titleView.view)
+            
+            let toolBarView = UIHostingController(rootView: ornamentProvider.provideToolBarView())
+            toolBarView.view.backgroundColor = UIColor.clear
+            
+            self.toolBarView = toolBarView
+            toolBarContainer.addSubview(toolBarView.view)
         }
+    }
+    
+    private func setCurrentController() {
+        guard let firstImage = images[safeIndex: syncer.currentIndex] else {
+            return
+        }
+        
+        let controller = createDetailController(for: firstImage)
+        if self.currentViewController == nil {
+            controller.startFrame = syncer.currentFrame
+        }
+        
+        currentViewController = controller
+        setViewControllers([controller], direction: .forward, animated: true)
     }
     
     public override func viewDidAppear(_ animated: Bool) {
@@ -110,8 +131,15 @@ public class UIImageViewer<
             .end()
             .height(80 + self.view.safeAreaInsets.top)
         
+        toolBarContainer.pin
+            .bottom()
+            .start()
+            .end()
+            .height(80 + self.view.safeAreaInsets.bottom)
+        
         gradientLayer.pin.all()
         titleView?.view.pin.all()
+        toolBarView?.view.pin.all()
         
         if let scrollView = getScrollView() {
             // Transform not work with auto-layout, we use pin layout insteads
@@ -167,6 +195,24 @@ public class UIImageViewer<
         }
     }
     
+    public func requestDelete(phAsset: PHAsset) {
+        Task {
+            if await MediaAssetWriter.shared.delete(asset: phAsset) {
+                let index = self.images.firstIndex { provider in
+                    provider.phAssetRes.phAsset.localIdentifier == phAsset.localIdentifier
+                }
+                if let index = index {
+                    var currentIndex = syncer.currentIndex
+                    self.images.remove(at: index)
+                    
+                    currentIndex = currentIndex.clamp(to: 0...self.images.count - 1)
+                    syncer.currentIndex = currentIndex
+                    setCurrentController()
+                }
+            }
+        }
+    }
+    
     private func animateToDismiss(targetView: UIView) {
         UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseOut) {
             targetView.transform = CGAffineTransform(translationX: 0, y: self.view.frame.height)
@@ -213,6 +259,7 @@ public class UIImageViewer<
             targetView.layer.mask?.frame = targetMaskFrame
             self.view.backgroundColor = .clear
             self.titleBarContainer.alpha = 0.0
+            self.toolBarContainer.alpha = 0.0
         } completion: { _ in
             self.requestDismiss(animated: false)
         }
@@ -236,12 +283,14 @@ public class UIImageViewer<
         return controller
     }
     
-    private func updateTitleBar() {
+    private func updateOrnamentUI() {
         guard let current = currentViewController else {
             return
         }
         if let provider = current.asset {
-            titleBarProvider?.onUpdate(provider: provider)
+            ornamentProvider?.onSetup(editSourceProvider: self)
+            ornamentProvider?.onUpdateTitleBar(provider: provider)
+            ornamentProvider?.onUpdateToolBar(provider: provider)
         }
     }
     
@@ -276,7 +325,7 @@ public class UIImageViewer<
             return
         }
         previous.reset()
-        updateTitleBar()
+        updateOrnamentUI()
     }
     
     // MARK: UIPageViewControllerDataSource

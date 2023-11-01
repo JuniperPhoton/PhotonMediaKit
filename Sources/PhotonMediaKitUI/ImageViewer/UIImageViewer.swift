@@ -100,6 +100,14 @@ public class UIImageViewer<
             
             self.toolBarView = toolBarView
             toolBarContainer.addSubview(toolBarView.view)
+            
+            titleBarContainer.alpha = 0
+            toolBarContainer.alpha = 0
+            
+            UIView.animate(withDuration: 0.3) {
+                self.titleBarContainer.alpha = 1
+                self.toolBarContainer.alpha = 1
+            }
         }
     }
     

@@ -300,7 +300,7 @@ public actor MediaAssetLoader {
     @available(iOS 15.0, macOS 12.0, *)
     public func fetchPhotosByCollection(
         dateRange: ClosedRange<Date>,
-        collection: PHAssetCollection,
+        collection: PHAssetCollection?,
         loadAssetResourcesInPlaceTypes: [UTType],
         configure: ((PHFetchOptions) -> Void)? = nil
     ) async -> PHFetchTracableResult? {
@@ -315,7 +315,12 @@ public actor MediaAssetLoader {
             configure(allPhotosOptions)
         }
         
-        let allPhotos = PHAsset.fetchAssets(in: collection, options: allPhotosOptions)
+        let allPhotos: PHFetchResult<PHAsset>
+        if let collection = collection {
+            allPhotos = PHAsset.fetchAssets(in: collection, options: allPhotosOptions)
+        } else {
+            allPhotos = PHAsset.fetchAssets(with: allPhotosOptions)
+        }
         
         LibLogger.mediaLoader.log("begin enumerateObjects all photos")
         

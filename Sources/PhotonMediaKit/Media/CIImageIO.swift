@@ -23,6 +23,13 @@ public actor CIImageIO {
         // empty
     }
     
+    public func loadCGImage(ciImage: CIImage?) async -> CGImage? {
+        guard let ciImage = ciImage else {
+            return nil
+        }
+        return sharedCIContext.createCGImage(ciImage, from: ciImage.extent)
+    }
+    
     @available(iOS 15.0, macOS 12.0, *)
     public func saveImage(file: URL, toURL: URL, toFormat: ImageFormat) async throws -> Bool {
         guard let utType = file.getUTType() else {

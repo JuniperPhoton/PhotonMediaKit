@@ -198,14 +198,23 @@ public actor MediaAssetLoader {
     
     public func fetchThumbnailCGImage(
         phAsset: PHAsset,
-        size: CGSize = CGSize(width: 400, height: 400)
+        size: CGSize = CGSize(width: 400, height: 400),
+        isNetworkAccessAllowed: Bool = false,
+        onProgressChanged: ((Double) -> Void)? = nil
     ) async -> CGImage? {
         return await withCheckedContinuation { continuation in
             let cacheManager = PHCachingImageManager.default()
             
             let o = PHImageRequestOptions()
-            o.isNetworkAccessAllowed = false
+            o.isNetworkAccessAllowed = isNetworkAccessAllowed
             o.isSynchronous = true
+            o.resizeMode = .fast
+            
+            if isNetworkAccessAllowed {
+                o.progressHandler = { progress, error, obj, map in
+                    onProgressChanged?(progress)
+                }
+            }
             
             cacheManager.requestImage(for: phAsset,
                                       targetSize: size,
@@ -295,6 +304,18 @@ public actor MediaAssetLoader {
         LibLogger.mediaLoader.log("end enumerateObjects all videos \(rawVideos.count)")
         
         return PHFetchTracableResult(allVideos, rawVideos)
+    }
+    
+    @available(iOS 15.0, macOS 12.0, *)
+    public func fetchPhoto(itemIdentifier: String) async -> PHAsset? {
+        return await fetchPhotosByCollection(
+            dateRange: Date.distantPast...Date.distantFuture,
+            collection: nil,
+            loadAssetResourcesInPlaceTypes: []
+        ) { options in
+            options.fetchLimit = 1
+            options.predicate = NSPredicate(format: "localIdentifier == %@", itemIdentifier)
+        }?.result?.firstObject
     }
     
     @available(iOS 15.0, macOS 12.0, *)

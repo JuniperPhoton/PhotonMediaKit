@@ -13,6 +13,7 @@ import PinLayout
 
 #if canImport(UIKit)
 import UIKit
+#endif
 
 /// An object to sync information between cell view and ``UIImageViewer``.
 @MainActor
@@ -28,6 +29,7 @@ public class CellLocationSyncer: ObservableObject {
     }
 }
 
+#if canImport(UIKit)
 public class UIImageViewer<
     AssetProvider: MediaAssetProvider,
     OrnamentProvider: UIImageViewerOrnamentProvider

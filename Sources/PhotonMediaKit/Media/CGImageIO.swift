@@ -38,40 +38,63 @@ public actor CGImageIO {
         guard let cgImage = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
             throw IOError("Faile")
         }
-        
+                
         return cgImage
     }
     
     /// Scale image to the specified factor.
-    public func scaleCGImage(image: CGImage, scaleFactor: CGFloat) -> CGImage? {
-        let rect = CGRect(x: 0, y: 0, width: CGFloat(image.width) * scaleFactor,
-                          height: CGFloat(image.height) * scaleFactor)
-        
-        guard let context = CGContext(data: nil, width: Int(rect.width), height: Int(rect.height),
-                                      bitsPerComponent: 8,
-                                      bytesPerRow: 0,
-                                      space: CGColorSpaceCreateDeviceRGB(),
-                                      bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue) else {
-            return nil
+    /// Note that if rotationDegrees % 180 is not zero, the width and height parameters must be the original ones before rotation.
+    public func scaleCGImage(
+        image: CGImage,
+        scaleFactor: CGFloat,
+        rotationDegrees: Int = 0
+    ) -> CGImage? {
+        var finalW = CGFloat(image.width) * scaleFactor
+        var finalH = CGFloat(image.height) * scaleFactor
+        if rotationDegrees % 180 != 0 {
+            let temp = finalW
+            finalW = finalH
+            finalH = temp
         }
-        
-        context.draw(image, in: rect)
-        return context.makeImage()
+        return scaleCGImage(image: image, width: finalW, height: finalH, rotationDegrees: rotationDegrees)
     }
     
     /// Scale image to the specified width and height.
-    public func scaleCGImage(image: CGImage, width: CGFloat, height: CGFloat) -> CGImage? {
-        let rect = CGRect(x: 0, y: 0, width: width, height: height)
-        
-        guard let context = CGContext(data: nil, width: Int(rect.width), height: Int(rect.height),
-                                      bitsPerComponent: 8,
-                                      bytesPerRow: 0,
-                                      space: CGColorSpaceCreateDeviceRGB(),
-                                      bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue) else {
+    /// - parameter width: The final width after rotation
+    /// - parameter height: The final width after rotation
+    /// - parameter rotationDegrees: The rotation in degrees
+    public func scaleCGImage(
+        image: CGImage,
+        width: CGFloat,
+        height: CGFloat,
+        rotationDegrees: Int = 0
+    ) -> CGImage? {
+        guard let context = CGContext(
+            data: nil,
+            width: Int(width),
+            height: Int(height),
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
+        ) else {
             return nil
         }
         
-        context.draw(image, in: rect)
+        let radians = Double(rotationDegrees) * Double.pi / 180.0
+        let shouldSwapSize = rotationDegrees % 180 != 0
+        
+        context.translateBy(x: width / 2, y: height / 2)
+        context.rotate(by: radians)
+        
+        if shouldSwapSize {
+            context.translateBy(x: -height / 2, y: -width / 2)
+            context.draw(image, in: CGRect(x: 0, y: 0, width: height, height: width))
+        } else {
+            context.translateBy(x: -width / 2, y: -height / 2)
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        }
+        
         return context.makeImage()
     }
     

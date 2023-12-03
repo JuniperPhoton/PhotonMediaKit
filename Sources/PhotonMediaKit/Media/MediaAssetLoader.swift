@@ -48,6 +48,7 @@ public actor MediaAssetLoader {
     }
     
 #if canImport(UIKit)
+    /// Fetch ``UIImage`` from ``PHAsset``.
     @available(iOS 15.0, *)
     public func fetchUIImage(
         phAsset: PHAsset,
@@ -66,6 +67,7 @@ public actor MediaAssetLoader {
         }
     }
     
+    /// Fetch resized ``UIImage`` from ``PHAsset``.
     @available(iOS 15.0, *)
     public func fetchThumbnailUIImage(
         phAsset: PHAsset,
@@ -89,6 +91,7 @@ public actor MediaAssetLoader {
         }
     }
     
+    /// Fetch full-sized ``UIImage`` from ``PHAsset``.
     @available(iOS 15.0, tvOS 15.0, *)
     public func fetchFullUIImage(
         phAsset: PHAsset,
@@ -151,8 +154,10 @@ public actor MediaAssetLoader {
             
             var outputData = Data()
             
-            PHAssetResourceManager.default().requestData(for: rawRes,
-                                                         options: option) { data in
+            PHAssetResourceManager.default().requestData(
+                for: rawRes,
+                options: option
+            ) { data in
                 outputData.append(data)
             } completionHandler: { error in
                 if error != nil && outputData.count > 0 {
@@ -169,7 +174,7 @@ public actor MediaAssetLoader {
         version: MediaAssetVersion,
         allowFromNetwork: Bool,
         onProgressChanged: @escaping (Double) -> Void
-    ) async -> Data? {
+    ) async -> (Data?, CGImagePropertyOrientation) {
         return await withCheckedContinuation { continuation in
             let manager = PHImageManager()
             
@@ -188,7 +193,7 @@ public actor MediaAssetLoader {
             let id = manager
                 .requestImageDataAndOrientation(for: phAsset, options: o) { data, str, orientation, map in
                     LibLogger.mediaLoader.log("end fetch full data for \(phAsset.localIdentifier)")
-                    continuation.resume(returning: data)
+                    continuation.resume(returning: (data, orientation))
                 }
             if Task.isCancelled {
                 manager.cancelImageRequest(id)

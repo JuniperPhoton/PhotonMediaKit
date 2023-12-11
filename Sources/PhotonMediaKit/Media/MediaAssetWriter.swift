@@ -20,16 +20,26 @@ public class MediaAssetWriter {
     
     public static let shared = MediaAssetWriter()
     
+    public var isDenied: Bool {
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        return status == .denied || status == .restricted
+    }
+    
+    public var isAuthorized: Bool {
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        return status == .authorized || status == .limited
+    }
+    
     private init() {
         // private
     }
     
     public func requestForPermission() async -> Bool {
         let status = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
-        if status == .denied || status == .notDetermined {
-            return false
+        if status == .authorized || status == .limited {
+            return true
         }
-        return true
+        return false
     }
     
     public func createOrGetCollection(title: String) async -> PHAssetCollection? {

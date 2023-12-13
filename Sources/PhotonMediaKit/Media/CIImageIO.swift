@@ -9,25 +9,23 @@ import Foundation
 import Photos
 
 public actor CIImageIO {
-    private let sharedCIContext: CIContext = {
-        return CIContext()
-    }()
-    
     enum IOError: Error {
         case notAuthorized
         case render
         case other
     }
     
-    public init() {
-        // empty
+    public let ciContext: CIContext
+    
+    public init(ciContext: CIContext = CIContext()) {
+        self.ciContext = ciContext
     }
     
     public func loadCGImage(ciImage: CIImage?) async -> CGImage? {
         guard let ciImage = ciImage else {
             return nil
         }
-        return sharedCIContext.createCGImage(ciImage, from: ciImage.extent)
+        return ciContext.createCGImage(ciImage, from: ciImage.extent)
     }
     
     @available(iOS 15.0, macOS 12.0, *)
@@ -85,10 +83,12 @@ public actor CIImageIO {
             throw IOError.other
         }
         
-        let file: URL? = try? await saveUsingCIImage(data: data,
-                                                     toURL: tempFile,
-                                                     originalIdentifier: resource.uniformTypeIdentifier,
-                                                     toFormat: toFormat)
+        let file: URL? = try? await saveUsingCIImage(
+            data: data,
+            toURL: tempFile,
+            originalIdentifier: resource.uniformTypeIdentifier,
+            toFormat: toFormat
+        )
         
         guard let outputFile = file else {
             throw IOError.render
@@ -132,10 +132,12 @@ public actor CIImageIO {
                 
                 LibLogger.imageIO.log("convert to HDR using \(String(describing: colorSpace))")
                 
-                try sharedCIContext.writeHEIF10Representation(of: output,
-                                                              to: toURL,
-                                                              colorSpace: colorSpace,
-                                                              options: [:])
+                try ciContext.writeHEIF10Representation(
+                    of: output,
+                    to: toURL,
+                    colorSpace: colorSpace,
+                    options: [:]
+                )
                 
                 continuation.resume(returning: toURL)
             } catch {
@@ -163,20 +165,20 @@ public actor CIImageIO {
             do {
                 switch toFormat {
                 case .jpeg:
-                    try sharedCIContext.writeJPEGRepresentation(
+                    try ciContext.writeJPEGRepresentation(
                         of: output,
                         to: toURL,
                         colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!
                     )
                 case .heif:
-                    try sharedCIContext.writeHEIFRepresentation(
+                    try ciContext.writeHEIFRepresentation(
                         of: output,
                         to: toURL,
                         format: .ARGB8,
                         colorSpace: CGColorSpace(name: CGColorSpace.displayP3)!
                     )
                 case.heif10Bit:
-                    try sharedCIContext.writeHEIF10Representation(
+                    try ciContext.writeHEIF10Representation(
                         of: output,
                         to: toURL,
                         colorSpace: CGColorSpace(name: CGColorSpace.displayP3)!,

@@ -32,13 +32,13 @@ public actor CGImageIO {
     /// - parameter data: data to be loaded as ``CGImage``
     public func loadCGImage(data: Data) throws -> CGImage {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
-            throw IOError("Failed to create image source")
+            throw IOError("Failed to CGImageSourceCreateWithData")
         }
         
         guard let cgImage = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
-            throw IOError("Faile")
+            throw IOError("Failed to CGImageSourceCreateImageAtIndex")
         }
-                
+        
         return cgImage
     }
     

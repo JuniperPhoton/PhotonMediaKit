@@ -215,7 +215,14 @@ public class UIImageViewer<
                     var currentIndex = syncer.currentIndex
                     self.images.remove(at: index)
                     
-                    currentIndex = currentIndex.clamp(to: 0...self.images.count - 1)
+                    let lower = 0
+                    let upper = self.images.count - 1
+                    if lower >= upper {
+                        self.requestDismiss(animated: false)
+                        return
+                    }
+                    
+                    currentIndex = currentIndex.clamp(to: lower...upper)
                     syncer.currentIndex = currentIndex
                     setCurrentController()
                 }

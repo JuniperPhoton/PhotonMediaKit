@@ -229,9 +229,13 @@ public class MediaAssetWriter {
     }
     
     public func delete(asset: PHAsset) async -> Bool {
+        return await delete(assets: [asset])
+    }
+    
+    public func delete(assets: [PHAsset]) async -> Bool {
         return await withCheckedContinuation { continuation in
             PHPhotoLibrary.shared().performChanges {
-                let _ = PHAssetChangeRequest.deleteAssets([asset] as NSArray)
+                let _ = PHAssetChangeRequest.deleteAssets(assets as NSArray)
             } completionHandler: { success, error in
                 continuation.resume(returning: success)
             }

@@ -1,0 +1,32 @@
+{
+  "pins" : [
+    {
+      "identity" : "photonutilitykit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/JuniperPhoton/PhotonUtilityKit",
+      "state" : {
+        "revision" : "7b4e332b2cf12a55b9fe092a26f1db1e15c66be8",
+        "version" : "1.4.0"
+      }
+    },
+    {
+      "identity" : "pinlayout",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/layoutBox/PinLayout",
+      "state" : {
+        "revision" : "8eaa3a15e4dcabaca4c95aea4c0ff0c9b4a67213",
+        "version" : "1.10.5"
+      }
+    },
+    {
+      "identity" : "swiftui-introspect",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/siteline/swiftui-introspect",
+      "state" : {
+        "revision" : "121c146fe591b1320238d054ae35c81ffa45f45a",
+        "version" : "0.12.0"
+      }
+    }
+  ],
+  "version" : 2
+}

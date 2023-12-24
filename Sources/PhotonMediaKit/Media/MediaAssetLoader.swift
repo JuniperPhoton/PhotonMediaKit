@@ -144,7 +144,7 @@ public actor MediaAssetLoader {
     
     public func fetchFullRawData(phAsset: PHAsset) async -> (PHAssetResource, Data)? {
         return await withCheckedContinuation { continuation in
-            guard let rawRes = loadAssetResources(for: phAsset, forUTTypes: [.rawImage]) else {
+            guard let rawRes = MediaResourceLoader.shared.loadAssetResources(for: phAsset, for: [.rawImage]) else {
                 continuation.resume(returning: nil)
                 return
             }
@@ -390,25 +390,6 @@ public actor MediaAssetLoader {
         )
     }
     
-    public func loadAssetResources(
-        for asset: PHAsset,
-        forUTTypes: [UTType]
-    ) -> PHAssetResource? {
-        let res = PHAssetResource.assetResources(for: asset)
-        return res.first { resource in
-            let uniformTypeIdentifier = resource.uniformTypeIdentifier
-            guard let utType = UTType(uniformTypeIdentifier) else {
-                return false
-            }
-            if forUTTypes.contains(utType) {
-                return true
-            }
-            return forUTTypes.first { superType in
-                utType.isSubtype(of: superType)
-            } != nil
-        }
-    }
-    
     private func fetchAssetWithRes(
         allPhotos: PHFetchResult<PHAsset>,
         loadAssetResourcesInPlaceTypes: [UTType]
@@ -420,8 +401,8 @@ public actor MediaAssetLoader {
         allPhotos.enumerateObjects { asset, i, stop in
             if !Task.isCancelled {
                 if !loadAssetResourcesInPlaceTypes.isEmpty {
-                    let res = self.loadAssetResources(for: asset,
-                                                      forUTTypes: loadAssetResourcesInPlaceTypes)
+                    let res = MediaResourceLoader.shared.loadAssetResources(for: asset,
+                                                                            for: loadAssetResourcesInPlaceTypes)
                     if let nonNilRes = res {
                         results.append(MediaAssetRes(phAsset: asset, resource: nonNilRes))
                     }

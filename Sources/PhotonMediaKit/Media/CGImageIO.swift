@@ -162,27 +162,57 @@ public actor CGImageIO {
         return mutableData as Data
     }
     
-    /// Get the orientation from EXIF of the ``file``.
+    /// Get the orientation from EXIF of the image ``file``.
     public func getExifOrientation(file: URL) -> CGImagePropertyOrientation {
+        guard let map = getExifMap(file: file) else {
+            return .up
+        }
+        guard let orientation = map["Orientation"] as? UInt32 else {
+            return .up
+        }
+        return .init(rawValue: orientation) ?? .up
+    }
+    
+    /// Get the creation date of the image ``file``.
+    public func getCreationDate(file: URL) -> Date? {
+        guard let exifMap = getExifMap(file: file)?["{Exif}"] as? Dictionary<String, Any> else {
+            return nil
+        }
+        
+        var creationDate: Date?
+        
+        if let date = exifMap["DateTimeOriginal"] as? String {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy:MM:dd HH:mm:ss"
+            
+            if let date = formatter.date(from: date) {
+                creationDate = date
+            } else {
+                formatter.dateFormat = "yyyy:MM:dd hh:mm:ss"
+                creationDate = formatter.date(from: date) ?? .now
+            }
+        }
+        
+        return creationDate
+    }
+    
+    /// Get the exif map of the image ``file``.
+    public func getExifMap(file: URL) -> Dictionary<String, Any>? {
         let options: [String: Any] = [
             kCGImageSourceShouldCacheImmediately as String: false,
         ]
         
         guard let source = CGImageSourceCreateWithURL(file as CFURL, options as CFDictionary) else {
-            return .up
+            return nil
         }
         
         guard let metadata = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) else {
-            return .up
+            return nil
         }
         
         guard let map = metadata as? Dictionary<String, Any> else {
-            return .up
+            return nil
         }
-        
-        guard let orientation = map["Orientation"] as? UInt32 else {
-            return .up
-        }
-        return .init(rawValue: orientation) ?? .up
+        return map
     }
 }

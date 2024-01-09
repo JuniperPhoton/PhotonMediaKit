@@ -43,6 +43,20 @@ public actor MediaAssetLoader {
         }
     }
     
+    public enum FetchSortOption {
+        case creationDate(ascending: Bool)
+        case modificationDate(ascending: Bool)
+        
+        public func asSortDescriptor() -> NSSortDescriptor {
+            switch self {
+            case .creationDate(let ascending):
+                return NSSortDescriptor(key: "creationDate", ascending: ascending)
+            case .modificationDate(let ascending):
+                return NSSortDescriptor(key: "modificationDate", ascending: ascending)
+            }
+        }
+    }
+    
     public init() {
         // empty
     }
@@ -266,6 +280,7 @@ public actor MediaAssetLoader {
     public func fetchVideos(
         dateRange: ClosedRange<Date>,
         filterOptions: MediaFilterOptions,
+        sortOption: FetchSortOption = .creationDate(ascending: false),
         configure: ((PHFetchOptions) -> Void)? = nil
     ) async -> PHFetchTracableResult? {
         let fromDate = dateRange.lowerBound
@@ -283,7 +298,7 @@ public actor MediaAssetLoader {
         }
         
         let allVideosOptions = PHFetchOptions()
-        allVideosOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        allVideosOptions.sortDescriptors = [sortOption.asSortDescriptor()]
         allVideosOptions.predicate = NSPredicate(format: "creationDate >= %@ && creationDate <= %@ && (pixelWidth > 1920 || pixelHeight > 1920)",
                                                  argumentArray: [fromDate, toDate])
         
@@ -328,13 +343,14 @@ public actor MediaAssetLoader {
         dateRange: ClosedRange<Date>,
         collection: PHAssetCollection?,
         loadAssetResourcesInPlaceTypes: [UTType],
+        sortOption: FetchSortOption = .creationDate(ascending: false),
         configure: ((PHFetchOptions) -> Void)? = nil
     ) async -> PHFetchTracableResult? {
         let fromDate = dateRange.lowerBound
         let toDate = dateRange.upperBound
         
         let allPhotosOptions = PHFetchOptions()
-        allPhotosOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        allPhotosOptions.sortDescriptors = [sortOption.asSortDescriptor()]
         allPhotosOptions.predicate = NSPredicate(format: "creationDate >= %@ && creationDate <= %@",
                                                  argumentArray: [fromDate, toDate])
         if let configure = configure {

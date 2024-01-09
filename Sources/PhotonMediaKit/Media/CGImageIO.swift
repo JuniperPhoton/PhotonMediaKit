@@ -130,13 +130,13 @@ public actor CGImageIO {
     /// - parameter file: file URL  to be saved into
     /// - parameter cgImage: the image to be saved
     /// - parameter utType: a ``UTType`` to identify the image format
-    public func saveToFile(file: URL, cgImage: CGImage, utType: UTType) throws -> URL {
+    public func saveToFile(file: URL, cgImage: CGImage, utType: UTType, properties: CFDictionary? = nil) throws -> URL {
         guard let dest = CGImageDestinationCreateWithURL(file as CFURL,
                                                          utType.identifier as CFString, 1, nil) else {
             throw IOError("Failed to create image destination")
         }
         
-        CGImageDestinationAddImage(dest, cgImage, nil)
+        CGImageDestinationAddImage(dest, cgImage, properties)
         
         if CGImageDestinationFinalize(dest) {
             return file
@@ -147,13 +147,13 @@ public actor CGImageIO {
     
     /// Get the jpeg data from a ``CGImage``.
     /// - parameter cgImage: the image to get data
-    public func getJpegData(cgImage: CGImage) throws -> Data {
+    public func getJpegData(cgImage: CGImage, properties: CFDictionary? = nil) throws -> Data {
         guard let mutableData = CFDataCreateMutable(nil, 0),
               let destination = CGImageDestinationCreateWithData(mutableData, UTType.jpeg.identifier as CFString, 1, nil) else {
             throw IOError("Error on getting data")
         }
         
-        CGImageDestinationAddImage(destination, cgImage, nil)
+        CGImageDestinationAddImage(destination, cgImage, properties)
         
         guard CGImageDestinationFinalize(destination) else {
             throw IOError("Error on finalize")

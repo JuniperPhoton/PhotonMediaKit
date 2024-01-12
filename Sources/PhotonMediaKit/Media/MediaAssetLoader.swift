@@ -19,7 +19,7 @@ import AppKit
 
 public struct PHFetchTracableResult {
     public let result: PHFetchResult<PHAsset>?
-    public let assetRes: [MediaAssetRes]
+    public var assetRes: [MediaAssetRes]
     
     init(_ result: PHFetchResult<PHAsset>?, _ assetRes: [MediaAssetRes]) {
         self.result = result
@@ -46,13 +46,16 @@ public actor MediaAssetLoader {
     public enum FetchSortOption {
         case creationDate(ascending: Bool)
         case modificationDate(ascending: Bool)
+        case systemDefault
         
-        public func asSortDescriptor() -> NSSortDescriptor {
+        public func asSortDescriptors() -> [NSSortDescriptor] {
             switch self {
             case .creationDate(let ascending):
-                return NSSortDescriptor(key: "creationDate", ascending: ascending)
+                return [NSSortDescriptor(key: "creationDate", ascending: ascending)]
             case .modificationDate(let ascending):
-                return NSSortDescriptor(key: "modificationDate", ascending: ascending)
+                return [NSSortDescriptor(key: "modificationDate", ascending: ascending)]
+            case .systemDefault:
+                return []
             }
         }
     }
@@ -298,7 +301,7 @@ public actor MediaAssetLoader {
         }
         
         let allVideosOptions = PHFetchOptions()
-        allVideosOptions.sortDescriptors = [sortOption.asSortDescriptor()]
+        allVideosOptions.sortDescriptors = sortOption.asSortDescriptors()
         allVideosOptions.predicate = NSPredicate(format: "creationDate >= %@ && creationDate <= %@ && (pixelWidth > 1920 || pixelHeight > 1920)",
                                                  argumentArray: [fromDate, toDate])
         
@@ -350,7 +353,7 @@ public actor MediaAssetLoader {
         let toDate = dateRange.upperBound
         
         let allPhotosOptions = PHFetchOptions()
-        allPhotosOptions.sortDescriptors = [sortOption.asSortDescriptor()]
+        allPhotosOptions.sortDescriptors = sortOption.asSortDescriptors()
         allPhotosOptions.predicate = NSPredicate(format: "creationDate >= %@ && creationDate <= %@",
                                                  argumentArray: [fromDate, toDate])
         if let configure = configure {

@@ -89,15 +89,45 @@ public class MediaAssetWriter {
     }
 #endif
     
-    public func saveMediaFileToAlbum(
+    /// Save the RAW file to photo library and return the result.
+    /// - parameter rawURL: The main RAW file if presented
+    /// - parameter processedURL: The optional photo image for this asset
+    /// - parameter collection: The ``PHAssetCollection`` to be added into
+    /// - parameter location: The ``CLLocation`` of this photo asset
+    /// - parameter deleteOnComplete: Whether deleting the files or not after complete(success or fail)
+    public func saveMediaFileToPhotoLibrary(
         rawURL: URL,
         processedURL: URL? = nil,
         collection: PHAssetCollection? = nil,
         location: CLLocation? = nil,
         deleteOnComplete: Bool
     ) async -> Bool {
+        return await saveMediaFileToPhotoLibrary(
+            rawURL: rawURL,
+            processedURL: processedURL,
+            collection: collection,
+            location: location,
+            deleteOnComplete: deleteOnComplete
+        ) != nil
+    }
+    
+    /// Save the RAW file to photo library and return the localIdentifier if succeeded.
+    /// - parameter rawURL: The main RAW file if presented
+    /// - parameter processedURL: The optional photo image for this asset
+    /// - parameter collection: The ``PHAssetCollection`` to be added into
+    /// - parameter location: The ``CLLocation`` of this photo asset
+    /// - parameter deleteOnComplete: Whether deleting the files or not after complete(success or fail)
+    public func saveMediaFileToPhotoLibrary(
+        rawURL: URL,
+        processedURL: URL? = nil,
+        collection: PHAssetCollection? = nil,
+        location: CLLocation? = nil,
+        deleteOnComplete: Bool
+    ) async -> String? {
         return await withCheckedContinuation { continuation in
             print("saveMediaFileToAlbum, main of rawURL, processedURL: \(String(describing: processedURL))")
+            
+            var placeholder: PHObjectPlaceholder? = nil
             
             PHPhotoLibrary.shared().performChanges {
                 let creationRequest = PHAssetCreationRequest.forAsset()
@@ -136,11 +166,17 @@ public class MediaAssetWriter {
                     }
                 }
                 
-                continuation.resume(returning: success)
+                continuation.resume(returning: placeholder?.localIdentifier)
             }
         }
     }
     
+    /// Save the media file to photo library and return the result.
+    /// - parameter processedURL: The main photo image for this asset
+    /// - parameter rawURL: The backed RAW file if presented
+    /// - parameter collection: The ``PHAssetCollection`` to be added into
+    /// - parameter location: The ``CLLocation`` of this photo asset
+    /// - parameter deleteOnComplete: Whether deleting the files or not after complete(success or fail)
     public func saveMediaFileToAlbum(
         processedURL: URL,
         rawURL: URL? = nil,
@@ -148,8 +184,32 @@ public class MediaAssetWriter {
         location: CLLocation? = nil,
         deleteOnComplete: Bool
     ) async -> Bool {
+        return await saveMediaFileToPhotoLibrary(
+            processedURL: processedURL,
+            rawURL: rawURL,
+            collection: collection,
+            location: location,
+            deleteOnComplete: deleteOnComplete
+        ) != nil
+    }
+    
+    /// Save the media file to photo library and return the localIdentifier if succeeded.
+    /// - parameter processedURL: The main photo image for this asset
+    /// - parameter rawURL: The backed RAW file if presented
+    /// - parameter collection: The ``PHAssetCollection`` to be added into
+    /// - parameter location: The ``CLLocation`` of this photo asset
+    /// - parameter deleteOnComplete: Whether deleting the files or not after complete(success or fail)
+    public func saveMediaFileToPhotoLibrary(
+        processedURL: URL,
+        rawURL: URL? = nil,
+        collection: PHAssetCollection? = nil,
+        location: CLLocation? = nil,
+        deleteOnComplete: Bool
+    ) async -> String? {
         return await withCheckedContinuation { continuation in
             LibLogger.libDefault.log("saveMediaFileToAlbum, main of processedURL, raw: \(String(describing: rawURL))")
+            
+            var placeholder: PHObjectPlaceholder? = nil
             
             PHPhotoLibrary.shared().performChanges {
                 let creationRequest = PHAssetCreationRequest.forAsset()
@@ -173,6 +233,8 @@ public class MediaAssetWriter {
                     )
                 }
                 
+                placeholder = creationRequest.placeholderForCreatedAsset
+                
                 collection?.addAsset(creation: creationRequest)
             } completionHandler: { success, error in
                 LibLogger.libDefault.log("save media result: \(success) error: \(String(describing: error))")
@@ -188,7 +250,7 @@ public class MediaAssetWriter {
                     }
                 }
                 
-                continuation.resume(returning: success)
+                continuation.resume(returning: placeholder?.localIdentifier)
             }
         }
     }

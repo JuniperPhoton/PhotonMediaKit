@@ -9,7 +9,6 @@ import Foundation
 import Photos
 import SwiftUI
 import PhotonMediaKit
-import PinLayout
 
 #if canImport(UIKit)
 import UIKit
@@ -42,8 +41,8 @@ public class UIImageViewer<
     
     var ornamentProvider: OrnamentProvider? = nil
     
-    private var titleView: UIHostingController<OrnamentProvider.TitleBarContentView>? = nil
-    private var toolBarView: UIHostingController<OrnamentProvider.ToolBarContentView>? = nil
+    private var titleViewController: UIHostingController<OrnamentProvider.TitleBarContentView>? = nil
+    private var toolBarViewController: UIHostingController<OrnamentProvider.ToolBarContentView>? = nil
     private var currentViewController: UIImageDetailViewController<AssetProvider>? = nil
     
     private lazy var gradientLayer = {
@@ -79,7 +78,7 @@ public class UIImageViewer<
         }
         
         setCurrentController()
-
+        
         if let scrollView = getScrollView() {
             let pan = UIPanGestureRecognizer(target: self, action: #selector(onPan))
             pan.delegate = self
@@ -89,18 +88,91 @@ public class UIImageViewer<
         self.view.addSubview(titleBarContainer)
         self.view.addSubview(toolBarContainer)
         
+        // Disable autoresizing mask translation
+        titleBarContainer.translatesAutoresizingMaskIntoConstraints = false
+        toolBarContainer.translatesAutoresizingMaskIntoConstraints = false
+        titleViewController?.view.translatesAutoresizingMaskIntoConstraints = false
+        toolBarViewController?.view.translatesAutoresizingMaskIntoConstraints = false
+        gradientLayer.superlayer?.sublayers?.first?.masksToBounds = false
+        
+        // Define constraints for titleBarContainer
+        NSLayoutConstraint.activate([
+            titleBarContainer.topAnchor.constraint(equalTo: self.view.safeAreaLayoutGuide.topAnchor),
+            titleBarContainer.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
+            titleBarContainer.trailingAnchor.constraint(equalTo: self.view.trailingAnchor),
+            titleBarContainer.heightAnchor.constraint(equalToConstant: 80 + self.view.safeAreaInsets.top)
+        ])
+        
+        // Define constraints for toolBarContainer
+        NSLayoutConstraint.activate([
+            toolBarContainer.bottomAnchor.constraint(equalTo: self.view.safeAreaLayoutGuide.bottomAnchor),
+            toolBarContainer.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
+            toolBarContainer.trailingAnchor.constraint(equalTo: self.view.trailingAnchor),
+            toolBarContainer.heightAnchor.constraint(equalToConstant: 80 + self.view.safeAreaInsets.bottom)
+        ])
+        
+        // Assuming gradientLayer is a CAGradientLayer added to self.view.layer
+        gradientLayer.frame = self.view.bounds
+        
+        // Define constraints for titleView
+        if let titleView = titleViewController?.view {
+            NSLayoutConstraint.activate([
+                titleView.topAnchor.constraint(equalTo: titleBarContainer.bottomAnchor),
+                titleView.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
+                titleView.trailingAnchor.constraint(equalTo: self.view.trailingAnchor),
+                titleView.bottomAnchor.constraint(equalTo: toolBarContainer.topAnchor)
+            ])
+        }
+        
+        // Define constraints for toolBarView
+        if let toolBarView = toolBarViewController?.view {
+            NSLayoutConstraint.activate([
+                toolBarView.topAnchor.constraint(equalTo: titleBarContainer.bottomAnchor),
+                toolBarView.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
+                toolBarView.trailingAnchor.constraint(equalTo: self.view.trailingAnchor),
+                toolBarView.bottomAnchor.constraint(equalTo: toolBarContainer.topAnchor)
+            ])
+        }
+        
+        // Set constraints for scrollView, if it shouldn't use auto-layout
+        if let scrollView = getScrollView() {
+            scrollView.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                scrollView.topAnchor.constraint(equalTo: titleBarContainer.bottomAnchor),
+                scrollView.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
+                scrollView.trailingAnchor.constraint(equalTo: self.view.trailingAnchor),
+                scrollView.bottomAnchor.constraint(equalTo: toolBarContainer.topAnchor)
+            ])
+        }
+        
         if let ornamentProvider = ornamentProvider {
-            let titleView = UIHostingController(rootView: ornamentProvider.provideTitleBarView())
-            titleView.view.backgroundColor = UIColor.clear
+            let titleViewController = UIHostingController(rootView: ornamentProvider.provideTitleBarView())
+            titleViewController.view.backgroundColor = UIColor.clear
             
-            self.titleView = titleView
-            titleBarContainer.addSubview(titleView.view)
+            self.titleViewController = titleViewController
+            titleBarContainer.addSubview(titleViewController.view)
             
-            let toolBarView = UIHostingController(rootView: ornamentProvider.provideToolBarView())
-            toolBarView.view.backgroundColor = UIColor.clear
+            titleViewController.view.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                titleViewController.view.topAnchor.constraint(equalTo: self.titleBarContainer.topAnchor),
+                titleViewController.view.leadingAnchor.constraint(equalTo: self.titleBarContainer.leadingAnchor),
+                titleViewController.view.trailingAnchor.constraint(equalTo: self.titleBarContainer.trailingAnchor),
+                titleViewController.view.bottomAnchor.constraint(equalTo: self.titleBarContainer.bottomAnchor)
+            ])
             
-            self.toolBarView = toolBarView
-            toolBarContainer.addSubview(toolBarView.view)
+            let toolBarViewController = UIHostingController(rootView: ornamentProvider.provideToolBarView())
+            toolBarViewController.view.backgroundColor = UIColor.clear
+            
+            self.toolBarViewController = toolBarViewController
+            toolBarContainer.addSubview(toolBarViewController.view)
+            
+            toolBarViewController.view.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                toolBarViewController.view.topAnchor.constraint(equalTo: self.toolBarContainer.topAnchor),
+                toolBarViewController.view.leadingAnchor.constraint(equalTo: self.toolBarContainer.leadingAnchor),
+                toolBarViewController.view.trailingAnchor.constraint(equalTo: self.toolBarContainer.trailingAnchor),
+                toolBarViewController.view.bottomAnchor.constraint(equalTo: self.toolBarContainer.bottomAnchor)
+            ])
             
             titleBarContainer.alpha = 0
             toolBarContainer.alpha = 0
@@ -130,31 +202,6 @@ public class UIImageViewer<
     public override func viewDidAppear(_ animated: Bool) {
         let parent = self.parent
         parent?.view.backgroundColor = UIColor.clear
-    }
-    
-    public override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        
-        titleBarContainer.pin
-            .top()
-            .start()
-            .end()
-            .height(80 + self.view.safeAreaInsets.top)
-        
-        toolBarContainer.pin
-            .bottom()
-            .start()
-            .end()
-            .height(80 + self.view.safeAreaInsets.bottom)
-        
-        gradientLayer.pin.all()
-        titleView?.view.pin.all()
-        toolBarView?.view.pin.all()
-        
-        if let scrollView = getScrollView() {
-            // Transform not work with auto-layout, we use pin layout insteads
-            scrollView.pin.all()
-        }
     }
     
     public func gestureRecognizerShouldBegin(_ current: UIGestureRecognizer) -> Bool {

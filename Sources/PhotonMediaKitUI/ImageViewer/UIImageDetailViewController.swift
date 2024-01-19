@@ -90,7 +90,19 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        loadingView.pin.all()
+        
+        // Disable autoresizing mask translation for loadingView
+        loadingView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Define constraints to pin loadingView to all edges of its superview
+        if let superview = loadingView.superview {
+            NSLayoutConstraint.activate([
+                loadingView.topAnchor.constraint(equalTo: superview.topAnchor),
+                loadingView.leadingAnchor.constraint(equalTo: superview.leadingAnchor),
+                loadingView.trailingAnchor.constraint(equalTo: superview.trailingAnchor),
+                loadingView.bottomAnchor.constraint(equalTo: superview.bottomAnchor)
+            ])
+        }
     }
     
     func reset() {
@@ -236,13 +248,25 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
                 playButton.alpha = 0.0
                 
                 self.view.addSubview(playButton)
-                playButton.pin.size(CGSize(width: 100, height: 100)).center()
                 
+                // Disable autoresizing mask translation for playButton
+                playButton.translatesAutoresizingMaskIntoConstraints = false
+                
+                // Define constraints to set the size and center the playButton
+                NSLayoutConstraint.activate([
+                    playButton.widthAnchor.constraint(equalToConstant: 100),
+                    playButton.heightAnchor.constraint(equalToConstant: 100),
+                    playButton.centerXAnchor.constraint(equalTo: self.view.centerXAnchor),
+                    playButton.centerYAnchor.constraint(equalTo: self.view.centerYAnchor)
+                ])
+                
+                // Animate the playButton's alpha to fade it in
                 UIView.animate(withDuration: 0.3) {
                     playButton.alpha = 1.0
                 }
             }
         } else {
+            // Remove playButton from its superview
             playButton.removeFromSuperview()
         }
     }

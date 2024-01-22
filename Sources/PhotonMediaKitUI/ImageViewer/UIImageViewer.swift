@@ -35,6 +35,7 @@ public class UIImageViewer<
 >: UIPageViewController, UIImageViewerEditSourceProvider, UIGestureRecognizerDelegate, UIPageViewControllerDataSource, UIPageViewControllerDelegate where OrnamentProvider.AssetProvider == AssetProvider {
     var syncer: CellLocationSyncer = CellLocationSyncer()
     var onRequestDismiss: ((Bool) -> Void)? = nil
+    var animateTransitToStartLocation = false
     var animateDismissToStartLocation = false
     var animateBackgroundOnViewLoaded = true
     
@@ -197,7 +198,7 @@ public class UIImageViewer<
         }
         
         let controller = createDetailController(for: firstImage)
-        if self.currentViewController == nil {
+        if self.currentViewController == nil && animateTransitToStartLocation {
             controller.startFrame = syncer.currentFrame
         }
         

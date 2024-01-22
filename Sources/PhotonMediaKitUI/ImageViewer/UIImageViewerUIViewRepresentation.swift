@@ -20,6 +20,7 @@ public struct UIImageViewerUIViewRepresentation<AssetProvider: MediaAssetProvide
     private let images: [AssetProvider]
     private let syncer: CellLocationSyncer
     private let ornamentProvider: OrnamentProvider
+    private let animateTransitToStartLocation: Bool
     private let animateDismissToStartLocation: Bool
     private let animateBackgroundOnViewLoaded: Bool
     private let onRequestDismiss: ((Bool) -> Void)
@@ -28,6 +29,7 @@ public struct UIImageViewerUIViewRepresentation<AssetProvider: MediaAssetProvide
         images: [AssetProvider],
         syncer: CellLocationSyncer,
         ornamentProvider: OrnamentProvider,
+        animateTransitToStartLocation: Bool,
         animateDismissToStartLocation: Bool,
         animateBackgroundOnViewLoaded: Bool,
         onRequestDismiss: @escaping ((Bool) -> Void)
@@ -35,6 +37,7 @@ public struct UIImageViewerUIViewRepresentation<AssetProvider: MediaAssetProvide
         self.images = images
         self.syncer = syncer
         self.ornamentProvider = ornamentProvider
+        self.animateTransitToStartLocation = animateTransitToStartLocation
         self.animateDismissToStartLocation = animateDismissToStartLocation
         self.animateBackgroundOnViewLoaded = animateBackgroundOnViewLoaded
         self.onRequestDismiss = onRequestDismiss
@@ -56,6 +59,7 @@ public struct UIImageViewerUIViewRepresentation<AssetProvider: MediaAssetProvide
         controller.onRequestDismiss = onRequestDismiss
         controller.ornamentProvider = ornamentProvider
         controller.syncer = self.syncer
+        controller.animateTransitToStartLocation = self.animateTransitToStartLocation
         controller.animateDismissToStartLocation = self.animateDismissToStartLocation
         controller.animateBackgroundOnViewLoaded = self.animateBackgroundOnViewLoaded
         return controller

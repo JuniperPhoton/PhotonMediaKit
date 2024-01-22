@@ -35,7 +35,8 @@ public class UIImageViewer<
 >: UIPageViewController, UIImageViewerEditSourceProvider, UIGestureRecognizerDelegate, UIPageViewControllerDataSource, UIPageViewControllerDelegate where OrnamentProvider.AssetProvider == AssetProvider {
     var syncer: CellLocationSyncer = CellLocationSyncer()
     var onRequestDismiss: ((Bool) -> Void)? = nil
-    var animatedDismissToStartLocation = false
+    var animateDismissToStartLocation = false
+    var animateBackgroundOnViewLoaded = true
     
     private(set) var images: [AssetProvider] = []
     
@@ -73,8 +74,14 @@ public class UIImageViewer<
         self.delegate = self
         
         self.view.backgroundColor = .clear
-        UIView.animate(withDuration: 0.3) {
+        
+        let action = {
             self.view.backgroundColor = .black
+        }
+        if animateBackgroundOnViewLoaded {
+            UIView.animate(withDuration: 0.3, animations: action)
+        } else {
+            action()
         }
         
         setCurrentController()
@@ -228,7 +235,7 @@ public class UIImageViewer<
         
         if gesture.state == .ended {
             if translation.y >= 300 || velocity.y >= 400 {
-                if self.animatedDismissToStartLocation {
+                if self.animateDismissToStartLocation {
                     if !animateToDismissToStartFrame(targetView: targetView,
                                                      currentViewController: currentViewController) {
                         animateToDismiss(targetView: targetView)

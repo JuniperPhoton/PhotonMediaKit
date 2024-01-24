@@ -215,4 +215,24 @@ public actor CGImageIO {
         }
         return map
     }
+    
+    /// Get the exif map of the image ``Data``.
+    public func getExifMap(data: Data) -> Dictionary<String, Any>? {
+        let options: [String: Any] = [
+            kCGImageSourceShouldCacheImmediately as String: false,
+        ]
+        
+        guard let source = CGImageSourceCreateWithData(data as CFData, options as CFDictionary) else {
+            return nil
+        }
+        
+        guard let metadata = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) else {
+            return nil
+        }
+        
+        guard let map = metadata as? Dictionary<String, Any> else {
+            return nil
+        }
+        return map
+    }
 }

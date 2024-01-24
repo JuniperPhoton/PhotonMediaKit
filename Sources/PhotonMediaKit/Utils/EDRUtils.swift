@@ -69,6 +69,18 @@ public class EDRUtils {
         }
     }
     
+    public static var potentialEDRHeadroom: CGFloat {
+        if #available(iOS 17.0, macOS 14.0, tvOS 16.0, *) {
+#if canImport(UIKit)
+            UIScreen.main.potentialEDRHeadroom
+#elseif canImport(AppKit)
+            (NSScreen.main?.maximumPotentialExtendedDynamicRangeColorComponentValue ?? 1.0)
+#endif
+        } else {
+            1.0
+        }
+    }
+    
     public static var supportEDRByDevice: Bool {
         if #available(iOS 17.0, macOS 14.0, tvOS 16.0, *) {
 #if canImport(UIKit)

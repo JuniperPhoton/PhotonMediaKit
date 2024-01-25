@@ -119,6 +119,10 @@ public actor CGImageIO {
         
         CGImageDestinationAddImage(dest, cgImage, metadata)
         
+        if let auxiliaryData = CGImageSourceCopyAuxiliaryDataInfoAtIndex(source, 0, kCGImageAuxiliaryDataTypeHDRGainMap) {
+            CGImageDestinationAddAuxiliaryDataInfo(dest, kCGImageAuxiliaryDataTypeHDRGainMap, auxiliaryData)
+        }
+        
         if CGImageDestinationFinalize(dest) {
             return file
         }
@@ -130,13 +134,23 @@ public actor CGImageIO {
     /// - parameter file: file URL  to be saved into
     /// - parameter cgImage: the image to be saved
     /// - parameter utType: a ``UTType`` to identify the image format
-    public func saveToFile(file: URL, cgImage: CGImage, utType: UTType, properties: CFDictionary? = nil) throws -> URL {
+    public func saveToFile(
+        file: URL,
+        cgImage: CGImage,
+        utType: UTType,
+        properties: CFDictionary? = nil,
+        auxiliaryData: CFDictionary? = nil
+    ) throws -> URL {
         guard let dest = CGImageDestinationCreateWithURL(file as CFURL,
                                                          utType.identifier as CFString, 1, nil) else {
             throw IOError("Failed to create image destination")
         }
         
         CGImageDestinationAddImage(dest, cgImage, properties)
+        
+        if let auxiliaryData = auxiliaryData {
+            CGImageDestinationAddAuxiliaryDataInfo(dest, kCGImageAuxiliaryDataTypeHDRGainMap, auxiliaryData)
+        }
         
         if CGImageDestinationFinalize(dest) {
             return file

@@ -109,10 +109,8 @@ public class EDRUtils {
         return await extractHDRGainMap(data: data)
     }
     
-    /// Extract the HDR gain map information from the data and return ``HDRGainMapInfo``.
-    ///
-    /// See more: https://developer.apple.com/documentation/appkit/images_and_pdf/applying_apple_hdr_effect_to_your_photos
-    public static func extractHDRGainMap(data: Data) async -> HDRGainMapInfo? {
+    /// Extract the HDR gain map original data and parse as ``CFDictionary``.
+    public static func extractHDRGainMapDictionary(data: Data) async -> CFDictionary? {
         let options: [String: Any] = [
             kCGImageSourceShouldCacheImmediately as String: false,
         ]
@@ -121,7 +119,18 @@ public class EDRUtils {
             return nil
         }
         
-        guard let auxiliaryData = CGImageSourceCopyAuxiliaryDataInfoAtIndex(source, 0, kCGImageAuxiliaryDataTypeHDRGainMap) as? Dictionary<CFString, Any> else {
+        guard let auxiliaryData = CGImageSourceCopyAuxiliaryDataInfoAtIndex(source, 0, kCGImageAuxiliaryDataTypeHDRGainMap) else {
+            return nil
+        }
+        
+        return auxiliaryData
+    }
+    
+    /// Extract the HDR gain map information from the data and return ``HDRGainMapInfo``.
+    ///
+    /// See more: https://developer.apple.com/documentation/appkit/images_and_pdf/applying_apple_hdr_effect_to_your_photos
+    public static func extractHDRGainMap(data: Data) async -> HDRGainMapInfo? {
+        guard let auxiliaryData = await extractHDRGainMapDictionary(data: data) as? Dictionary<CFString, Any> else {
             return nil
         }
         

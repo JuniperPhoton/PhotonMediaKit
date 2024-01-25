@@ -58,9 +58,6 @@ public struct HDRGainMapInfo {
 
 /// Provides information about EDR support on this device.
 public class EDRUtils {
-    private static var keyHDRGainMapHeadroom = "HDRGainMapHeadroom"
-    private static var keyHDRGainMapVersion = "HDRGainMapVersion"
-    
     public static var supportEDRByOS: Bool {
         if #available(iOS 16.0, macOS 13.0, *) {
             true
@@ -91,101 +88,6 @@ public class EDRUtils {
         } else {
             false
         }
-    }
-    
-    /// Extract the HDR gain map information from the data and return ``HDRGainMapInfo``.
-    ///
-    /// See more: https://developer.apple.com/documentation/appkit/images_and_pdf/applying_apple_hdr_effect_to_your_photos
-    public static func extractHDRGainMap(url: URL) async -> HDRGainMapInfo? {
-        let _ = url.startAccessingSecurityScopedResource()
-        defer {
-            url.stopAccessingSecurityScopedResource()
-        }
-        
-        guard let data = try? Data(contentsOf: url) else {
-            return nil
-        }
-        
-        return await extractHDRGainMap(data: data)
-    }
-    
-    /// Extract the HDR gain map original data and parse as ``CFDictionary``.
-    public static func extractHDRGainMapDictionary(data: Data) async -> CFDictionary? {
-        let options: [String: Any] = [
-            kCGImageSourceShouldCacheImmediately as String: false,
-        ]
-        
-        guard let source = CGImageSourceCreateWithData(data as CFData, options as CFDictionary) else {
-            return nil
-        }
-        
-        guard let auxiliaryData = CGImageSourceCopyAuxiliaryDataInfoAtIndex(source, 0, kCGImageAuxiliaryDataTypeHDRGainMap) else {
-            return nil
-        }
-        
-        return auxiliaryData
-    }
-    
-    /// Extract the HDR gain map information from the data and return ``HDRGainMapInfo``.
-    ///
-    /// See more: https://developer.apple.com/documentation/appkit/images_and_pdf/applying_apple_hdr_effect_to_your_photos
-    public static func extractHDRGainMap(data: Data) async -> HDRGainMapInfo? {
-        guard let auxiliaryData = await extractHDRGainMapDictionary(data: data) as? Dictionary<CFString, Any> else {
-            return nil
-        }
-        
-        if let desc = auxiliaryData[kCGImageAuxiliaryDataInfoDataDescription] as? Dictionary<String, Any>,
-           let metadata = auxiliaryData[kCGImageAuxiliaryDataInfoMetadata],
-           let data = auxiliaryData[kCGImageAuxiliaryDataInfoData] as? Data {
-            
-            guard let width = desc["Width"] as? Int,
-                  let height = desc["Height"] as? Int,
-                  let bytesPerRow = desc["BytesPerRow"] as? Int,
-                  let pixelFormat = desc["PixelFormat"] as? Int32
-            else {
-                return nil
-            }
-            
-            let orientation = desc["Orientation"] as? Int32 ?? 0
-            let cgOrientation = CGImagePropertyOrientation(rawValue: UInt32(orientation)) ?? .up
-            
-            let cgMetadata = metadata as! CGImageMetadata
-            var gainMapHeadroom: CGFloat? = nil
-            var valid = false
-            if let tags = CGImageMetadataCopyTags(cgMetadata) as? Array<Any> {
-                for tag in tags {
-                    let cfTag = tag as! CGImageMetadataTag
-                    let name = CGImageMetadataTagCopyName(cfTag) as? String
-                    let value = CGImageMetadataTagCopyValue(cfTag)
-                    if name == EDRUtils.keyHDRGainMapHeadroom, let value = value as? String, let float = Float(value) {
-                        gainMapHeadroom = CGFloat(float)
-                    }
-                    
-                    if name == EDRUtils.keyHDRGainMapVersion {
-                        valid = true
-                    }
-                }
-            }
-            
-            if !valid {
-                return nil
-            }
-            
-            debugPrint("extractHDRGainMap desc is \(desc)")
-            debugPrint("extractHDRGainMap metadata is \(metadata)")
-            
-            return HDRGainMapInfo(
-                width: width,
-                height: height,
-                bytesPerRow: bytesPerRow,
-                pixelFormat: pixelFormat,
-                orientation: cgOrientation,
-                headroom: gainMapHeadroom,
-                data: data
-            )
-        }
-        
-        return nil
     }
     
     /// Extract headroom from the EXIF metadata.

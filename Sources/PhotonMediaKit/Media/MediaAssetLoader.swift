@@ -70,14 +70,15 @@ public actor MediaAssetLoader {
     public func fetchUIImage(
         phAsset: PHAsset,
         option: FetchOption,
-        version: MediaAssetVersion
+        version: MediaAssetVersion,
+        useDynamicRange: Bool
     ) async -> UIImage? {
         LibLogger.mediaLoader.log("fetchUIImage for \(phAsset.localIdentifier), option \(option), version: \(version)")
         switch option {
         case .thumbnail:
             return await fetchThumbnailUIImage(phAsset: phAsset)
         case .full:
-            return await fetchFullUIImage(phAsset: phAsset, version: version)
+            return await fetchFullUIImage(phAsset: phAsset, version: version, useDynamicRange: useDynamicRange)
         case .size(w: let w, h: let h):
             return await fetchThumbnailUIImage(phAsset: phAsset,
                                                size: CGSize(width: w, height: h))
@@ -112,7 +113,8 @@ public actor MediaAssetLoader {
     @available(iOS 15.0, tvOS 15.0, *)
     public func fetchFullUIImage(
         phAsset: PHAsset,
-        version: MediaAssetVersion
+        version: MediaAssetVersion,
+        useDynamicRange: Bool
     ) async -> UIImage? {
         return await withCheckedContinuation { continuation in
             let cacheManager = PHCachingImageManager.default()
@@ -123,7 +125,7 @@ public actor MediaAssetLoader {
             o.version = version.getPHImageRequestOptionsVersion()
             
             let id = cacheManager.requestImageDataAndOrientation(for: phAsset, options: o) { data, _, _, _ in
-                let image = UIImageReaderCompat(useDynamicRange: false).uiImage(data: data)
+                let image = UIImageReaderCompat(useDynamicRange: useDynamicRange).uiImage(data: data)
                 continuation.resume(returning: image)
             }
             

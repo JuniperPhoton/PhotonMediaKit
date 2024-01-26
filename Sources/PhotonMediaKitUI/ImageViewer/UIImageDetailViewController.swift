@@ -41,6 +41,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     var onZoomChanged: ((CGFloat) -> Void)? = nil
     var onRequestDismiss: (() -> Void)? = nil
     var startFrame: CGRect = .zero
+    private(set) var useDynamicRange: Bool = false
     
     private var loadTask: Task<(), Never>? = nil
     private var currentViewSize: CGSize = .zero
@@ -48,6 +49,10 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     
     func setImage(_ asset: AssetProvider) {
         self.asset = asset
+    }
+    
+    func setUseDynamicRange(useDynamicRange: Bool) {
+        self.useDynamicRange = useDynamicRange
     }
     
     override func viewDidLoad() {
@@ -118,11 +123,12 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
                 return
             }
             
-            guard let thumbnailImage = await MediaAssetLoader()
-                .fetchUIImage(phAsset: asset.phAssetRes.phAsset,
-                              option: .size(w: currentViewSize.width,
-                                            h: currentViewSize.height),
-                              version: .current) else {
+            guard let thumbnailImage = await MediaAssetLoader().fetchUIImage(
+                phAsset: asset.phAssetRes.phAsset,
+                option: .size(w: currentViewSize.width, h: currentViewSize.height),
+                version: .current,
+                useDynamicRange: false
+            ) else {
                 return
             }
             
@@ -215,15 +221,23 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     }
     
     private func preloadFullSizeImage(assetRes: AssetProvider, version: MediaAssetVersion) async -> UIImage? {
-        return await MediaAssetLoader().fetchUIImage(phAsset: assetRes.phAssetRes.phAsset,
-                                                     option: .full, version: version)
+        return await MediaAssetLoader().fetchUIImage(
+            phAsset: assetRes.phAssetRes.phAsset,
+            option: .full,
+            version: version,
+            useDynamicRange: useDynamicRange
+        )
     }
     
     private func loadThenDisplayImage(assetRes: AssetProvider,
                                       option: MediaAssetLoader.FetchOption,
                                       version: MediaAssetVersion) async {
-        guard let uiImage = await MediaAssetLoader().fetchUIImage(phAsset: assetRes.phAssetRes.phAsset,
-                                                                  option: option, version: version) else {
+        guard let uiImage = await MediaAssetLoader().fetchUIImage(
+            phAsset: assetRes.phAssetRes.phAsset,
+            option: option,
+            version: version,
+            useDynamicRange: useDynamicRange
+        ) else {
             return
         }
         
@@ -362,7 +376,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         if #available(iOS 17.0, macOS 14.0, tvOS 17.0, *) {
             if uiImage.isHighDynamicRange {
                 LibLogger.libDefault.log("set preferredImageDynamicRange to high")
-                view.preferredImageDynamicRange = .high
+                view.preferredImageDynamicRange = .unspecified
             }
         }
         return view

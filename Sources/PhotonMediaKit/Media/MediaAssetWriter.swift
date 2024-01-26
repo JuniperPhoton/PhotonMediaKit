@@ -99,7 +99,7 @@ public class MediaAssetWriter {
         rawURL: URL,
         processedURL: URL? = nil,
         collection: PHAssetCollection? = nil,
-        location: CLLocation? = nil,
+        location: CLLocation?,
         deleteOnComplete: Bool
     ) async -> Bool {
         return await saveMediaFileToPhotoLibrary(
@@ -121,7 +121,7 @@ public class MediaAssetWriter {
         rawURL: URL,
         processedURL: URL? = nil,
         collection: PHAssetCollection? = nil,
-        location: CLLocation? = nil,
+        location: CLLocation?,
         deleteOnComplete: Bool
     ) async -> String? {
         return await withCheckedContinuation { continuation in
@@ -152,6 +152,8 @@ public class MediaAssetWriter {
                 }
                 
                 collection?.addAsset(creation: creationRequest)
+                
+                placeholder = creationRequest.placeholderForCreatedAsset
             } completionHandler: { success, error in
                 print("save media result: \(success) error: \(String(describing: error))")
                 
@@ -181,7 +183,7 @@ public class MediaAssetWriter {
         processedURL: URL,
         rawURL: URL? = nil,
         collection: PHAssetCollection? = nil,
-        location: CLLocation? = nil,
+        location: CLLocation?,
         deleteOnComplete: Bool
     ) async -> Bool {
         return await saveMediaFileToPhotoLibrary(
@@ -203,7 +205,7 @@ public class MediaAssetWriter {
         processedURL: URL,
         rawURL: URL? = nil,
         collection: PHAssetCollection? = nil,
-        location: CLLocation? = nil,
+        location: CLLocation?,
         deleteOnComplete: Bool
     ) async -> String? {
         return await withCheckedContinuation { continuation in
@@ -258,7 +260,7 @@ public class MediaAssetWriter {
     public func saveMediaFileToAlbum(
         file: URL,
         collection: PHAssetCollection? = nil,
-        location: CLLocation? = nil,
+        location: CLLocation?,
         deleteOnComplete: Bool
     ) async -> Bool {
         return await withCheckedContinuation { continuation in

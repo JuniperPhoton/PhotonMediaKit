@@ -67,15 +67,18 @@ public actor CIImageIO {
         
         return await MediaAssetWriter.shared.saveMediaFileToAlbum(
             file: outputFile,
+            location: asset.location,
             deleteOnComplete: true
         )
     }
     
     @available(iOS 15.0, macOS 12.0, *)
-    public func saveImage(data: Data,
-                          asset: PHAsset,
-                          resource: PHAssetResource,
-                          toFormat: ImageFormat) async throws -> Bool {
+    public func saveImage(
+        data: Data,
+        asset: PHAsset,
+        resource: PHAssetResource,
+        toFormat: ImageFormat
+    ) async throws -> Bool {
         guard let tempFile = MediaAssetWriter.shared.createTempFileToSave(
             originalFilename: resource.originalFilename,
             utType: toFormat.getUTType()
@@ -93,8 +96,12 @@ public actor CIImageIO {
         guard let outputFile = file else {
             throw IOError.render
         }
-        
-        return await MediaAssetWriter.shared.saveMediaFileToAlbum(file: outputFile, deleteOnComplete: true)
+                
+        return await MediaAssetWriter.shared.saveMediaFileToAlbum(
+            file: outputFile,
+            location: asset.location,
+            deleteOnComplete: true
+        )
     }
     
     @available(iOS 17.0, macOS 14.0, tvOS 17.0, *)

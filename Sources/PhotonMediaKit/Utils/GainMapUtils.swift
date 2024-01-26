@@ -78,11 +78,11 @@ public class GainMapUtils {
             return nil
         }
         
-        return await extractHDRGainMap(data: data)
+        return await extractGainMap(data: data)
     }
     
     /// Extract the HDR gain map original data and parse as ``CFDictionary``.
-    public func extractHDRGainMapDictionary(data: Data) async -> CFDictionary? {
+    public func extractGainMapDictionary(data: Data) async -> CFDictionary? {
         let options: [String: Any] = [
             kCGImageSourceShouldCacheImmediately as String: false,
         ]
@@ -98,17 +98,32 @@ public class GainMapUtils {
         return auxiliaryData
     }
     
-    /// Extract the HDR gain map information from the data and return ``HDRGainMapInfo``.
-    ///
-    /// See more: https://developer.apple.com/documentation/appkit/images_and_pdf/applying_apple_hdr_effect_to_your_photos
-    public func extractHDRGainMap(data: Data) async -> GainMapInfo? {
-        guard let auxiliaryData = await extractHDRGainMapDictionary(data: data) as? Dictionary<CFString, Any> else {
+    /// Extract the gain map size.
+    public func extractGainMapSize(auxiliaryMap: Dictionary<CFString, Any>) async -> CGSize? {
+        guard let desc = auxiliaryMap[kCGImageAuxiliaryDataInfoDataDescription] as? Dictionary<String, Any> else {
             return nil
         }
         
-        if let desc = auxiliaryData[kCGImageAuxiliaryDataInfoDataDescription] as? Dictionary<String, Any>,
-           let metadata = auxiliaryData[kCGImageAuxiliaryDataInfoMetadata],
-           let data = auxiliaryData[kCGImageAuxiliaryDataInfoData] as? Data {
+        guard let width = desc["Width"] as? Int,
+              let height = desc["Height"] as? Int
+        else {
+            return nil
+        }
+        
+        return CGSize(width: width, height: height)
+    }
+    
+    /// Extract the HDR gain map information from the data and return ``HDRGainMapInfo``.
+    ///
+    /// See more: https://developer.apple.com/documentation/appkit/images_and_pdf/applying_apple_hdr_effect_to_your_photos
+    public func extractGainMap(data: Data) async -> GainMapInfo? {
+        guard let auxiliaryMap = await extractGainMapDictionary(data: data) as? Dictionary<CFString, Any> else {
+            return nil
+        }
+        
+        if let desc = auxiliaryMap[kCGImageAuxiliaryDataInfoDataDescription] as? Dictionary<String, Any>,
+           let metadata = auxiliaryMap[kCGImageAuxiliaryDataInfoMetadata],
+           let data = auxiliaryMap[kCGImageAuxiliaryDataInfoData] as? Data {
             
             guard let width = desc["Width"] as? Int,
                   let height = desc["Height"] as? Int,
@@ -160,10 +175,57 @@ public class GainMapUtils {
         return nil
     }
     
+    /// Crop the gain map image to the specified ``CGRect`` and return the result with corrected desc.
+    /// - parameter ciContext: The ``CIContext`` to perform render. It will be better to cache the same ciContext object for later use.
+    /// - parameter auxiliaryMap: The gain map root data, retrieved by ``EDRUtils.extractHDRGainMapDictionary``.
+    public func cropGainMap(
+        ciContext: CIContext,
+        auxiliaryMap: Dictionary<CFString, Any>,
+        rect: CGRect
+    ) async -> GainMapAuxiliaryData? {
+        guard var mutableDesc = auxiliaryMap[kCGImageAuxiliaryDataInfoDataDescription] as? Dictionary<String, Any> else {
+            return nil
+        }
+        
+        guard let originalBitmapData = auxiliaryMap[kCGImageAuxiliaryDataInfoData] as? Data else {
+            return nil
+        }
+        
+        guard let originalWidth = mutableDesc[GainMapUtils.keyWidth] as? Int,
+              let originalHeight = mutableDesc[GainMapUtils.keyHeight] as? Int,
+              let bytesPerRow = mutableDesc[GainMapUtils.keyBytesPerRow] as? Int else {
+            return nil
+        }
+        
+        let ciImage = CIImage.createFrom(
+            bitmapData: originalBitmapData,
+            bytesPerRow: bytesPerRow,
+            size: CGSize(width: originalWidth, height: originalHeight)
+        )
+        
+        var cropped = ciImage.cropped(to: rect)
+        cropped = cropped.transformed(
+            by: CGAffineTransform.init(
+                translationX: -cropped.extent.minX,
+                y: -cropped.extent.minY
+            )
+        )
+        
+        guard let gainMapImageData = cropped.getBitmapData(ciContext: ciContext) else {
+            return nil
+        }
+        
+        mutableDesc[GainMapUtils.keyWidth] = cropped.extent.width
+        mutableDesc[GainMapUtils.keyHeight] = cropped.extent.height
+        mutableDesc[GainMapUtils.keyBytesPerRow] = cropped.extent.width
+        
+        return GainMapAuxiliaryData(gainMapImageData: gainMapImageData, desc: mutableDesc)
+    }
+    
     /// Read the ``CGImagePropertyOrientation`` from the desc map and rotate the auxiliary image based on the orientation
     /// and update the width, height and orientation of the desc and return the new one.
     /// - parameter ciContext: The ``CIContext`` to perform render. It will be better to cache the same ciContext object for later use.
-    /// - parameter auxiliaryData: The gain map root data, retrieved by ``EDRUtils.extractHDRGainMapDictionary``.
+    /// - parameter auxiliaryMap: The gain map root data, retrieved by ``EDRUtils.extractHDRGainMapDictionary``.
     ///
     /// To know more about the struct of auxiliaryData, please refer to: https://developer.apple.com/documentation/avfoundation/avdepthdata/creating_auxiliary_depth_data_manually?changes=_2_9
     ///
@@ -173,9 +235,9 @@ public class GainMapUtils {
     /// the system's Photos app will fail to render the image when applying zoom-in.
     public func applyingExifOrientation(
         ciContext: CIContext,
-        auxiliaryData: Dictionary<CFString, Any>
+        auxiliaryMap: Dictionary<CFString, Any>
     ) async -> GainMapAuxiliaryData? {
-        guard var mutableDesc = auxiliaryData[kCGImageAuxiliaryDataInfoDataDescription] as? Dictionary<String, Any> else {
+        guard var mutableDesc = auxiliaryMap[kCGImageAuxiliaryDataInfoDataDescription] as? Dictionary<String, Any> else {
             return nil
         }
         
@@ -193,53 +255,69 @@ public class GainMapUtils {
             return nil
         }
         
-        guard let originalBitmapData = auxiliaryData[kCGImageAuxiliaryDataInfoData] as? Data else {
+        guard let originalBitmapData = auxiliaryMap[kCGImageAuxiliaryDataInfoData] as? Data else {
             return nil
         }
         
-        var ciImage = CIImage(
+        var ciImage = CIImage.createFrom(
             bitmapData: originalBitmapData,
             bytesPerRow: bytesPerRow,
-            size: CGSize(width: originalWidth, height: originalHeight),
-            format: .L8,
-            colorSpace: nil
+            size: CGSize(width: originalWidth, height: originalHeight)
         )
         
         debugPrint("applyingExifOrientation, original width: \(originalWidth), height: \(originalHeight), bytesPerRow: \(bytesPerRow), dataSize: \(originalBitmapData)")
         
         ciImage = ciImage.transformed(by: ciImage.orientationTransform(for: orientation))
         
-        let finalTargetWidth = ciImage.extent.width
-        let finalTargetHeight = ciImage.extent.height
+        guard let gainMapImageData = ciImage.getBitmapData(ciContext: ciContext) else {
+            return nil
+        }
         
-        let rowBytes = 1 * Int(finalTargetWidth)
-        let dataSize = rowBytes * Int(finalTargetHeight)
+        let shouldSwapSize = orientationDegrees % 180 != 0
+        if shouldSwapSize {
+            mutableDesc[GainMapUtils.keyWidth] = ciImage.extent.width
+            mutableDesc[GainMapUtils.keyHeight] = ciImage.extent.height
+            mutableDesc[GainMapUtils.keyBytesPerRow] = ciImage.extent.width
+        }
+        mutableDesc[GainMapUtils.keyOrientation] = CGImagePropertyOrientation.up.rawValue
+        
+        return GainMapAuxiliaryData(gainMapImageData: gainMapImageData, desc: mutableDesc)
+    }
+}
+
+private extension CIImage {
+    static func createFrom(bitmapData: Data, bytesPerRow: Int, size: CGSize) -> CIImage {
+        return CIImage(
+            bitmapData: bitmapData,
+            bytesPerRow: bytesPerRow,
+            size: size,
+            format: .L8,
+            colorSpace: nil
+        )
+    }
+    
+    func getBitmapData(ciContext: CIContext) -> Data? {
+        let width = self.extent.width
+        let height = self.extent.height
+        
+        let rowBytes = 1 * Int(width)
+        let dataSize = rowBytes * Int(height)
         var gainMapImageData = Data(count: Int(dataSize))
-        
-        debugPrint("applyingExifOrientation, render, rowBytes: \(rowBytes), dataSize: \(dataSize), extend: \(ciImage.extent)")
         
         gainMapImageData.withUnsafeMutableBytes {
             if let baseAddress = $0.baseAddress {
                 ciContext.render(
-                    ciImage,
+                    self,
                     toBitmap: baseAddress,
                     rowBytes: rowBytes,
-                    bounds: ciImage.extent,
+                    bounds: self.extent,
                     format: .L8,
                     colorSpace: nil
                 )
             }
         }
         
-        let shouldSwapSize = orientationDegrees % 180 != 0
-        if shouldSwapSize {
-            mutableDesc[GainMapUtils.keyWidth] = finalTargetWidth
-            mutableDesc[GainMapUtils.keyHeight] = finalTargetHeight
-            mutableDesc[GainMapUtils.keyBytesPerRow] = finalTargetWidth
-        }
-        mutableDesc[GainMapUtils.keyOrientation] = CGImagePropertyOrientation.up.rawValue
-        
-        return GainMapAuxiliaryData(gainMapImageData: gainMapImageData, desc: mutableDesc)
+        return gainMapImageData
     }
 }
 

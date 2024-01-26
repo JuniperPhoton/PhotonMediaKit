@@ -18,6 +18,42 @@ public struct GainMapAuxiliaryData {
     }
 }
 
+public struct GainMapInfo {
+    /// The width of the gain map image.
+    public let width: Int
+    
+    /// The height of the gain map image.
+    public let height: Int
+    
+    /// The bytesPerRow of the gain map image.
+    public let bytesPerRow: Int
+    
+    /// The pixelFormat of the gain map image.
+    public let pixelFormat: Int32
+    
+    /// The orientation of the gain map image in the ``CGImagePropertyOrientation``.
+    public let orientation: CGImagePropertyOrientation
+    
+    /// If the metadata contains the headroom, this will not be nil.
+    /// Otherwise, you should read the headroom from maker.
+    public let headroom: CGFloat?
+    
+    /// The image bitmap data of the gain map image.
+    public let data: Data
+    
+    /// Convenient way to create the ``CIImage`` of this gain map.
+    public func toCIImage() -> CIImage? {
+        var gainImage = CIImage(
+            bitmapData: data,
+            bytesPerRow: bytesPerRow,
+            size: CGSize(width: width, height: height),
+            format: .L8,
+            colorSpace: nil
+        )
+        return gainImage
+    }
+}
+
 public class GainMapUtils {
     private static let keyWidth = "Width"
     private static let keyHeight = "Height"
@@ -32,7 +68,7 @@ public class GainMapUtils {
     /// Extract the HDR gain map information from the data and return ``HDRGainMapInfo``.
     ///
     /// See more: https://developer.apple.com/documentation/appkit/images_and_pdf/applying_apple_hdr_effect_to_your_photos
-    public func extractHDRGainMap(url: URL) async -> HDRGainMapInfo? {
+    public func extractHDRGainMap(url: URL) async -> GainMapInfo? {
         let _ = url.startAccessingSecurityScopedResource()
         defer {
             url.stopAccessingSecurityScopedResource()
@@ -65,7 +101,7 @@ public class GainMapUtils {
     /// Extract the HDR gain map information from the data and return ``HDRGainMapInfo``.
     ///
     /// See more: https://developer.apple.com/documentation/appkit/images_and_pdf/applying_apple_hdr_effect_to_your_photos
-    public func extractHDRGainMap(data: Data) async -> HDRGainMapInfo? {
+    public func extractHDRGainMap(data: Data) async -> GainMapInfo? {
         guard let auxiliaryData = await extractHDRGainMapDictionary(data: data) as? Dictionary<CFString, Any> else {
             return nil
         }
@@ -110,7 +146,7 @@ public class GainMapUtils {
             debugPrint("extractHDRGainMap desc is \(desc)")
             debugPrint("extractHDRGainMap metadata is \(metadata)")
             
-            return HDRGainMapInfo(
+            return GainMapInfo(
                 width: width,
                 height: height,
                 bytesPerRow: bytesPerRow,
@@ -172,8 +208,6 @@ public class GainMapUtils {
         debugPrint("applyingExifOrientation, original width: \(originalWidth), height: \(originalHeight), bytesPerRow: \(bytesPerRow), dataSize: \(originalBitmapData)")
         
         ciImage = ciImage.transformed(by: ciImage.orientationTransform(for: orientation))
-        let scale = 2000.0 / ciImage.extent.width
-        ciImage = ciImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         
         let finalTargetWidth = ciImage.extent.width
         let finalTargetHeight = ciImage.extent.height

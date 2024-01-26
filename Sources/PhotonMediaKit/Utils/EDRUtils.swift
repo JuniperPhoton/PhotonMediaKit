@@ -15,47 +15,6 @@ import UIKit
 import AppKit
 #endif
 
-public struct HDRGainMapInfo {
-    /// The width of the gain map image.
-    public let width: Int
-    
-    /// The height of the gain map image.
-    public let height: Int
-    
-    /// The bytesPerRow of the gain map image.
-    public let bytesPerRow: Int
-    
-    /// The pixelFormat of the gain map image.
-    public let pixelFormat: Int32
-    
-    /// The orientation of the gain map image in the ``CGImagePropertyOrientation``.
-    public let orientation: CGImagePropertyOrientation
-    
-    /// If the metadata contains the headroom, this will not be nil.
-    /// Otherwise, you should read the headroom from maker.
-    public let headroom: CGFloat?
-    
-    /// The image bitmap data of the gain map image.
-    public let data: Data
-    
-    /// Convenient way to create the ``CIImage`` of this gain map.
-    public func toCIImage() -> CIImage? {
-        var gainImage = CIImage(
-            bitmapData: data,
-            bytesPerRow: bytesPerRow,
-            size: CGSize(width: width, height: height),
-            format: .L8,
-            colorSpace: nil
-        )
-        
-        let transform = gainImage.orientationTransform(for: orientation)
-        gainImage = gainImage.transformed(by: transform)
-        gainImage = gainImage.transformed(by: CGAffineTransform(scaleX: 2.0, y: 2.0))
-        
-        return gainImage
-    }
-}
-
 /// Provides information about EDR support on this device.
 public class EDRUtils {
     public static var supportEDRByOS: Bool {

@@ -51,7 +51,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         self.asset = asset
     }
     
-    func setUseDynamicRange(useDynamicRange: Bool) {
+    func setUseDynamicRange(_ useDynamicRange: Bool) {
         self.useDynamicRange = useDynamicRange
     }
     

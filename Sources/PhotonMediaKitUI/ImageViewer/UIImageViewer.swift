@@ -38,6 +38,7 @@ public class UIImageViewer<
     var animateTransitToStartLocation = false
     var animateDismissToStartLocation = false
     var animateBackgroundOnViewLoaded = true
+    var useDynamicRange = false
     
     private(set) var images: [AssetProvider] = []
     
@@ -348,7 +349,7 @@ public class UIImageViewer<
     private func createDetailController(for image: AssetProvider) -> UIImageDetailViewController<AssetProvider> {
         let controller = UIImageDetailViewController<AssetProvider>()
         controller.setImage(image)
-        controller.setUseDynamicRange(useDynamicRange: true)
+        controller.setUseDynamicRange(useDynamicRange)
         controller.onRequestDismiss = { [weak self] in
             guard let self = self else { return }
             self.requestDismiss(animated: true)

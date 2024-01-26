@@ -70,32 +70,6 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         self.view.addSubview(loadingView)
         self.view.addSubview(scrollView)
         
-        currentViewSize = self.view.frame.size
-        
-        if startFrame != .zero {
-            loadImageForTransition()
-        } else {
-            loadFullImage()
-        }
-    }
-    
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        releaseImage()
-    }
-    
-    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
-        currentViewSize = size
-        
-        // We use the traditional frame method to layout the scrollView
-        // Since it's resizing is based on the frame. We update its frame on the new size
-        // Note that at this point, self.view's bounds is not updated yet.
-        self.scrollView.frame = CGRect(x: 0, y: 0, width: size.width, height: size.height)
-    }
-    
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        
         // Disable autoresizing mask translation for loadingView
         loadingView.translatesAutoresizingMaskIntoConstraints = false
         
@@ -108,6 +82,28 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
                 loadingView.bottomAnchor.constraint(equalTo: superview.bottomAnchor)
             ])
         }
+        
+        currentViewSize = self.view.frame.size
+        
+        if startFrame != .zero {
+            loadImageForTransition()
+        } else {
+            loadFullImage()
+        }
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        cancelLoadingImage()
+    }
+    
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        currentViewSize = size
+        
+        // We use the traditional frame method to layout the scrollView
+        // Since it's resizing is based on the frame. We update its frame on the new size
+        // Note that at this point, self.view's bounds is not updated yet.
+        self.scrollView.frame = CGRect(x: 0, y: 0, width: size.width, height: size.height)
     }
     
     func reset() {
@@ -202,10 +198,9 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         }
     }
     
-    func releaseImage() {
+    func cancelLoadingImage() {
         loadTask?.cancel()
         loadTask = nil
-        
         setupAVViewControllerTask?.cancel()
     }
     
@@ -375,8 +370,10 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         let view = UIImageView(image: uiImage)
         if #available(iOS 17.0, macOS 14.0, tvOS 17.0, *) {
             if uiImage.isHighDynamicRange {
-                LibLogger.libDefault.log("set preferredImageDynamicRange to high")
+                LibLogger.libDefault.log("set preferredImageDynamicRange to unspecified")
                 view.preferredImageDynamicRange = .unspecified
+            } else {
+                LibLogger.libDefault.log("provideContentView")
             }
         }
         return view

@@ -8,7 +8,7 @@
 import Foundation
 import CoreImage
 
-public struct GainMapAuxiliaryData {
+public struct GainMapAuxiliaryDataResult {
     public let gainMapImageData: Data
     public let desc: Dictionary<String, Any>
     
@@ -18,7 +18,7 @@ public struct GainMapAuxiliaryData {
     }
 }
 
-public struct GainmainAuxiliaryTransformationResult {
+public struct GainmainAuxiliaryImageResult {
     public let ciImage: CIImage
     public let desc: Dictionary<String, Any>
     
@@ -76,7 +76,7 @@ public class GainMapUtils {
     
     public func updateData(
         auxiliaryMap: Dictionary<CFString, Any>,
-        transformed: GainMapAuxiliaryData
+        transformed: GainMapAuxiliaryDataResult
     ) async -> Dictionary<CFString, Any> {
         var mutable = auxiliaryMap
         mutable[kCGImageAuxiliaryDataInfoData] = transformed.gainMapImageData
@@ -201,7 +201,7 @@ public class GainMapUtils {
         ciContext: CIContext,
         auxiliaryMap: Dictionary<CFString, Any>,
         rect: CGRect
-    ) async -> GainMapAuxiliaryData? {
+    ) async -> GainMapAuxiliaryDataResult? {
         return await applyTransformation(ciContext: ciContext, auxiliaryMap: auxiliaryMap) { ciImage, desc in
             var cropped = ciImage.cropped(to: rect)
             cropped = cropped.transformed(
@@ -216,7 +216,7 @@ public class GainMapUtils {
             mutableDesc[GainMapUtils.keyHeight] = cropped.extent.height
             mutableDesc[GainMapUtils.keyBytesPerRow] = cropped.extent.width
             
-            return GainmainAuxiliaryTransformationResult(ciImage: cropped, desc: mutableDesc)
+            return GainmainAuxiliaryImageResult(ciImage: cropped, desc: mutableDesc)
         }
     }
     
@@ -234,7 +234,7 @@ public class GainMapUtils {
     public func applyingExifOrientation(
         ciContext: CIContext,
         auxiliaryMap: Dictionary<CFString, Any>
-    ) async -> GainMapAuxiliaryData? {
+    ) async -> GainMapAuxiliaryDataResult? {
         return await applyTransformation(ciContext: ciContext, auxiliaryMap: auxiliaryMap) { ciImage, desc in
             var mutableDesc = desc
             let orientationValue = (mutableDesc[GainMapUtils.keyOrientation] as? UInt32) ?? 1
@@ -256,7 +256,7 @@ public class GainMapUtils {
             
             mutableDesc[GainMapUtils.keyOrientation] = CGImagePropertyOrientation.up.rawValue
             
-            return GainmainAuxiliaryTransformationResult(ciImage: transformed, desc: mutableDesc)
+            return GainmainAuxiliaryImageResult(ciImage: transformed, desc: mutableDesc)
         }
     }
     
@@ -268,8 +268,8 @@ public class GainMapUtils {
     public func applyTransformation(
         ciContext: CIContext,
         auxiliaryMap: Dictionary<CFString, Any>,
-        action: (CIImage, Dictionary<String, Any>) -> GainmainAuxiliaryTransformationResult?
-    ) async -> GainMapAuxiliaryData? {
+        action: (CIImage, Dictionary<String, Any>) -> GainmainAuxiliaryImageResult?
+    ) async -> GainMapAuxiliaryDataResult? {
         guard var mutableDesc = auxiliaryMap[kCGImageAuxiliaryDataInfoDataDescription] as? Dictionary<String, Any> else {
             return nil
         }
@@ -301,7 +301,7 @@ public class GainMapUtils {
             return nil
         }
         
-        return GainMapAuxiliaryData(gainMapImageData: gainMapImageData, desc: mutableDesc)
+        return GainMapAuxiliaryDataResult(gainMapImageData: gainMapImageData, desc: mutableDesc)
     }
 }
 

@@ -10,6 +10,9 @@ import AVFoundation
 import AVKit
 import Photos
 import PhotonMediaKit
+import CoreImage
+import MetalKit
+import SwiftUI
 
 #if canImport(UIKit)
 import UIKit
@@ -119,11 +122,9 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
                 return
             }
             
-            guard let thumbnailImage = await MediaAssetLoader().fetchUIImage(
+            guard let thumbnailImage = await MediaAssetLoader().fetchThumbnailCGImage(
                 phAsset: asset.phAssetRes.phAsset,
-                option: .size(w: currentViewSize.width, h: currentViewSize.height),
-                version: .current,
-                useDynamicRange: false
+                size: currentViewSize
             ) else {
                 return
             }
@@ -133,11 +134,11 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             async let fullSizeImageTask = preloadFullSizeImage(assetRes: asset, version: .current)
             
             // We use a thumbnail image as a placeholder during the transition
-            await displayImageForTransition(uiImage: thumbnailImage, enableZoom: false)
+            await displayImageForTransition(image: CIImage(cgImage: thumbnailImage), enableZoom: false)
             
             // By this point, the transition animation should be ended. Then we load the full size image.
             if let fullSizeImage = await fullSizeImageTask {
-                displayImage(uiImage: fullSizeImage, enableZoom: !asset.phAssetRes.isVideo)
+                displayImage(image: fullSizeImage, enableZoom: !asset.phAssetRes.isVideo)
                 configureForMediaType()
             }
         }
@@ -165,7 +166,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             }
             
             if let fullSizeImage = await fullSizeImageTask {
-                displayImage(uiImage: fullSizeImage, enableZoom: true)
+                displayImage(image: fullSizeImage, enableZoom: true)
                 configureForMediaType()
             }
             
@@ -215,31 +216,21 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         return rect
     }
     
-    private func preloadFullSizeImage(assetRes: AssetProvider, version: MediaAssetVersion) async -> UIImage? {
-        return await MediaAssetLoader().fetchUIImage(
-            phAsset: assetRes.phAssetRes.phAsset,
-            option: .full,
-            version: version,
-            useDynamicRange: useDynamicRange
-        )
+    private func preloadFullSizeImage(assetRes: AssetProvider, version: MediaAssetVersion) async -> CIImage? {
+        guard let cgImage = await MediaAssetLoader().fetchFullCGImage(phAsset: assetRes.phAssetRes.phAsset) else {
+            return nil
+        }
+        return CIImage(cgImage: cgImage)
     }
     
     private func loadThenDisplayImage(assetRes: AssetProvider,
                                       option: MediaAssetLoader.FetchOption,
                                       version: MediaAssetVersion) async {
-        guard let uiImage = await MediaAssetLoader().fetchUIImage(
-            phAsset: assetRes.phAssetRes.phAsset,
-            option: option,
-            version: version,
-            useDynamicRange: useDynamicRange
-        ) else {
+        guard let cgImage = await MediaAssetLoader().fetchFullCGImage(phAsset: assetRes.phAssetRes.phAsset) else {
             return
         }
-        
-        displayImage(
-            uiImage: uiImage,
-            enableZoom: option == MediaAssetLoader.FetchOption.full && !assetRes.phAssetRes.isVideo
-        )
+        let ciImage = CIImage(cgImage: cgImage)
+        displayImage(image: ciImage, enableZoom: option == MediaAssetLoader.FetchOption.full && !assetRes.phAssetRes.isVideo)
         configureForMediaType()
     }
     
@@ -321,22 +312,22 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         self.present(alertController, animated: true)
     }
     
-    private func displayImage(uiImage: UIImage, enableZoom: Bool) {
-        scrollView.display(image: uiImage)
+    private func displayImage(image: CIImage, enableZoom: Bool) {
+        scrollView.display(image: image)
         scrollView.isUserInteractionEnabled = enableZoom
     }
     
-    private func displayImageForTransition(uiImage: UIImage, enableZoom: Bool) async {
+    private func displayImageForTransition(image: CIImage, enableZoom: Bool) async {
         return await withCheckedContinuation { continuation in
             let startBound = CGRect(x: 0, y: 0, width: startFrame.width, height: startFrame.height)
-            let aspectRatioFrame = AVMakeRect(aspectRatio: uiImage.size, insideRect: startBound)
+            let aspectRatioFrame = AVMakeRect(aspectRatio: image.extent.size, insideRect: startBound)
             
             scrollView.frame = startBound
             
             let originalTransform = scrollView.transform
             scrollView.transform = originalTransform.translatedBy(x: startFrame.minX, y: startFrame.minY)
             
-            scrollView.display(image: uiImage)
+            scrollView.display(image: image)
             scrollView.isUserInteractionEnabled = enableZoom
             
             UIView.animate(withDuration: 0.2, delay: 0, options: .curveEaseOut) {
@@ -366,16 +357,44 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         // empty
     }
     
-    func provideContentView(uiImage: UIImage) -> UIImageView? {
-        let view = UIImageView(image: uiImage)
-        if #available(iOS 17.0, macOS 14.0, tvOS 17.0, *) {
-            if uiImage.isHighDynamicRange {
-                LibLogger.libDefault.log("set preferredImageDynamicRange to unspecified")
-                view.preferredImageDynamicRange = .unspecified
-            } else {
-                LibLogger.libDefault.log("provideContentView")
+    private let renderer: MetalRenderer = {
+        return MetalRenderer()
+    }()
+    
+    func provideContentView(image: CIImage) -> (UIView & UIImageHolderView)? {
+        let enableSetNeedsDisplay = false
+        
+        renderer.initializeCIContext(colorSpace: nil, name: "detail")
+        
+        renderer.requestChanged(displayedImage: image)
+        
+        let view = BoundAwareMTKView(frame: .zero, device: renderer.device)
+        view.onBoundsChanged = { [weak view] bounds in
+            if enableSetNeedsDisplay {
+                view?.setNeedsDisplay(bounds)
             }
         }
+        
+        view.imageToDisplay = image
+        
+        if enableSetNeedsDisplay {
+            view.enableSetNeedsDisplay = true
+            view.isPaused = true
+        } else {
+            // Suggest to Core Animation, through MetalKit, how often to redraw the view.
+            view.preferredFramesPerSecond = 30
+            view.enableSetNeedsDisplay = false
+            view.isPaused = false
+        }
+        
+        // Allow Core Image to render to the view using the Metal compute pipeline.
+        view.framebufferOnly = false
+        view.delegate = renderer
+        
+        if let layer = view.layer as? CAMetalLayer {
+            layer.isOpaque = false
+        }
+        
         return view
     }
     
@@ -388,3 +407,193 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     }
 }
 #endif
+
+
+private class BoundAwareMTKView: MTKView, UIImageHolderView {
+    private var currentBounds: CGRect = .zero
+    
+    var onBoundsChanged: ((CGRect) -> Void)? = nil
+    
+    var imageToDisplay: CIImage? = nil
+    
+#if canImport(UIKit)
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        
+        if self.currentBounds != self.bounds {
+            self.currentBounds = self.bounds
+            onBoundsChanged?(self.currentBounds)
+        }
+    }
+#else
+    override func layout() {
+        super.layout()
+        
+        if self.currentBounds != self.bounds {
+            self.currentBounds = self.bounds
+            onBoundsChanged?(self.currentBounds)
+        }
+    }
+#endif
+}
+
+private let maxBuffersInFlight = 3
+
+public final class MetalRenderer: NSObject, MTKViewDelegate, ObservableObject {
+    @Published var requestedDisplayedTime = CFAbsoluteTimeGetCurrent()
+    
+    public let device: MTLDevice
+    
+    let commandQueue: MTLCommandQueue
+    var ciContext: CIContext? = nil
+    var opaqueBackground: CIImage
+    let startTime: CFAbsoluteTime
+    
+    let inFlightSemaphore = DispatchSemaphore(value: maxBuffersInFlight)
+    
+    var scaleToFill: Bool = false
+    
+    private var displayedImage: CIImage? = nil
+    
+    public override init() {
+        let start = CFAbsoluteTimeGetCurrent()
+        self.device = MTLCreateSystemDefaultDevice()!
+        self.commandQueue = self.device.makeCommandQueue()!
+        self.opaqueBackground = CIImage.black
+        
+        self.startTime = CFAbsoluteTimeGetCurrent()
+        
+        debugPrint("MetalRenderer init \(CFAbsoluteTimeGetCurrent() - start)s")
+        super.init()
+    }
+    
+    /// The the background color to be composited with.
+    /// If the color is not opaque, please remember to set ``isOpaque`` in ``MetalView``.
+    public func setBackgroundColor(ciColor: CIColor) {
+        self.opaqueBackground = CIImage(color: ciColor)
+    }
+    
+    public func setScaleToFill(scaleToFill: Bool) {
+        self.scaleToFill = scaleToFill
+    }
+    
+    /// Initialize the CIContext with a specified working ``CGColorSpace``.
+    public func initializeCIContext(colorSpace: CGColorSpace?, name: String) {
+        let start = CFAbsoluteTimeGetCurrent()
+        
+        // Set up the Core Image context's options:
+        // - Name the context to make CI_PRINT_TREE debugging easier.
+        // - Disable caching because the image differs every frame.
+        // - Allow the context to use the low-power GPU, if available.
+        var options = [CIContextOption: Any]()
+        options = [
+            .name: name,
+            .cacheIntermediates: false,
+            .allowLowPower: true,
+        ]
+        if let colorSpace = colorSpace {
+            options[.workingColorSpace] = colorSpace
+        }
+        self.ciContext = CIContext(
+            mtlCommandQueue: self.commandQueue,
+            options: options
+        )
+        
+        debugPrint("MetalRenderer initializeCIContext \(CFAbsoluteTimeGetCurrent() - start)s, name: \(name) to color space: \(String(describing: colorSpace))")
+    }
+    
+    /// Request update the image.
+    public func requestChanged(displayedImage: CIImage?) {
+        self.displayedImage = displayedImage
+        self.requestedDisplayedTime = CFAbsoluteTimeGetCurrent()
+    }
+    
+    /// - Tag: draw
+    public func draw(in view: MTKView) {
+        guard let ciContext = ciContext else {
+            debugPrint("CIContext is nil!")
+            return
+        }
+        
+        _ = inFlightSemaphore.wait(timeout: DispatchTime.distantFuture)
+        if let commandBuffer = commandQueue.makeCommandBuffer() {
+            
+            // Add a completion handler that signals `inFlightSemaphore` when Metal and the GPU have fully
+            // finished processing the commands that the app encoded for this frame.
+            // This completion indicates that Metal and the GPU no longer need the dynamic buffers that
+            // Core Image writes to in this frame.
+            // Therefore, the CPU can overwrite the buffer contents without corrupting any rendering operations.
+            let semaphore = inFlightSemaphore
+            commandBuffer.addCompletedHandler { (_ commandBuffer)-> Swift.Void in
+                semaphore.signal()
+            }
+            
+            if let drawable = view.currentDrawable {
+                let dSize = view.drawableSize
+                
+                // Create a destination the Core Image context uses to render to the drawable's Metal texture.
+                let destination = CIRenderDestination(
+                    width: Int(dSize.width),
+                    height: Int(dSize.height),
+                    pixelFormat: view.colorPixelFormat,
+                    commandBuffer: nil
+                ) {
+                    return drawable.texture
+                }
+                
+                // Create a displayable image for the current time.
+                guard var image = self.displayedImage else {
+                    return
+                }
+                
+                let scaleW = min(1.0, CGFloat(dSize.width) / image.extent.width)
+                let scaleH = min(1.0, CGFloat(dSize.height) / image.extent.height)
+                
+                // To perfrom scaledToFit, use min. Use max for scaledToFill effect.
+                let scale: CGFloat
+                if scaleToFill {
+                    scale = max(scaleW, scaleH)
+                } else {
+                    scale = min(scaleW, scaleH)
+                }
+                
+                image = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+                
+                // Center the image in the view's visible area.
+                let iRect = image.extent
+                var backBounds = CGRect(x: 0, y: 0, width: dSize.width, height: dSize.height)
+                
+                let shiftX: CGFloat
+                let shiftY: CGFloat
+                
+                shiftX = round((backBounds.size.width + iRect.origin.x - iRect.size.width) * 0.5)
+                shiftY = round((backBounds.size.height + iRect.origin.y - iRect.size.height) * 0.5)
+                
+                // Read the center port of the image.
+                backBounds = backBounds.offsetBy(dx: -shiftX, dy: -shiftY)
+                
+                // Blend the image over an opaque background image.
+                // This is needed if the image is smaller than the view, or if it has transparent pixels.
+                image = image.composited(over: self.opaqueBackground)
+                
+                // Start a task that renders to the texture destination.
+                _ = try? ciContext.startTask(
+                    toRender: image,
+                    from: backBounds,
+                    to: destination,
+                    at: .zero
+                )
+                
+                // Insert a command to present the drawable when the buffer has been scheduled for execution.
+                commandBuffer.present(drawable)
+                
+                // Commit the command buffer so that the GPU executes the work that the Core Image Render Task issues.
+                commandBuffer.commit()
+            }
+        }
+    }
+    
+    public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
+        // Respond to drawable size or orientation changes.
+    }
+}

@@ -12,9 +12,14 @@ import UIKit
 
 @objc protocol ImageScrollViewDelegate: UIScrollViewDelegate {
     func imageScrollViewDidChangeOrientation(imageScrollView: UIImageScrollView)
-    func provideContentView(uiImage: UIImage) -> UIImageView?
+    func provideContentView(image: CIImage) -> (UIView & UIImageHolderView)?
     func onSingleTap(imageScrollView: UIImageScrollView) -> Bool
     func onDoubleTap(imageScrollView: UIImageScrollView) -> Bool
+}
+
+@objc
+protocol UIImageHolderView {
+    var imageToDisplay: CIImage? { get }
 }
 
 /// Modified from https://github.com/huynguyencong/ImageScrollView
@@ -36,7 +41,7 @@ class UIImageScrollView: UIScrollView {
     var imageContentMode: ScaleMode = .widthFill
     var initialOffset: Offset = .begining
     
-    private(set) var zoomView: UIImageView? = nil
+    private(set) var zoomView: (UIView & UIImageHolderView)? = nil
     
     weak var imageScrollViewDelegate: ImageScrollViewDelegate?
     
@@ -188,10 +193,14 @@ class UIImageScrollView: UIScrollView {
     
     // MARK: - Display image
     
-    func display(image: UIImage) {
+    func display(image: CIImage) {
         zoomView?.removeFromSuperview()
-        zoomView = imageScrollViewDelegate?.provideContentView(uiImage: image)
+        zoomView = imageScrollViewDelegate?.provideContentView(image: image)
         addSubview(zoomView!)
+                
+        if let zoomView = zoomView {
+            zoomView.frame = CGRect(x: 0, y: 0, width: image.extent.width, height: image.extent.height)
+        }
         
         zoomView!.isUserInteractionEnabled = true
         
@@ -204,8 +213,8 @@ class UIImageScrollView: UIScrollView {
         
         singleTapGesture.require(toFail: doubleTapGesture)
         
-        self.imageSize = image.size
-        configureImageForSize(image.size)
+        self.imageSize = image.extent.size
+        configureImageForSize(image.extent.size)
     }
     
     func reconfigureImageSize() {
@@ -309,7 +318,7 @@ class UIImageScrollView: UIScrollView {
     }
     
     func refresh() {
-        if let image = zoomView?.image {
+        if let image = zoomView?.imageToDisplay {
             display(image: image)
         }
     }

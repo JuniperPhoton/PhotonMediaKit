@@ -69,7 +69,7 @@ public class EDRUtils {
     ///
     /// See more: https://developer.apple.com/documentation/appkit/images_and_pdf/applying_apple_hdr_effect_to_your_photos
     public static func extractHeadroom(data: Data) async -> CGFloat? {
-        guard let map = await CGImageIO.shared.getExifMap(data: data) else {
+        guard let map = await CGImageIO.shared.getProperties(data: data) else {
             return nil
         }
         

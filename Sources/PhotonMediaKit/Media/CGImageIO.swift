@@ -159,6 +159,36 @@ public actor CGImageIO {
         throw IOError("Failed to finalize")
     }
     
+    /// Save the ``CGImage`` to a specified file, as a ``UTType``.
+    /// - parameter file: file URL  to be saved into
+    /// - parameter cgImage: the image to be saved
+    /// - parameter utType: a ``UTType`` to identify the image format
+    /// - parameter metadata: metadata creating with ``CGImageSourceCopyMetadataAtIndex``. Note that changing the tiff:Orientation in this metadata won't work.
+    public func saveToFile(
+        file: URL,
+        cgImage: CGImage,
+        utType: UTType,
+        metadata: CGImageMetadata? = nil,
+        auxiliaryData: CFDictionary? = nil
+    ) throws -> URL {
+        guard let dest = CGImageDestinationCreateWithURL(file as CFURL,
+                                                         utType.identifier as CFString, 1, nil) else {
+            throw IOError("Failed to create image destination")
+        }
+                
+        CGImageDestinationAddImageAndMetadata(dest, cgImage, metadata, nil)
+        
+        if let auxiliaryData = auxiliaryData {
+            CGImageDestinationAddAuxiliaryDataInfo(dest, kCGImageAuxiliaryDataTypeHDRGainMap, auxiliaryData)
+        }
+                
+        if CGImageDestinationFinalize(dest) {
+            return file
+        }
+        
+        throw IOError("Failed to finalize")
+    }
+    
     /// Get the jpeg data from a ``CGImage``.
     /// - parameter cgImage: the image to get data
     public func getJpegData(cgImage: CGImage, properties: CFDictionary? = nil) throws -> Data {
@@ -178,7 +208,7 @@ public actor CGImageIO {
     
     /// Get the orientation from EXIF of the image ``file``.
     public func getExifOrientation(file: URL) -> CGImagePropertyOrientation {
-        guard let map = getExifMap(file: file) else {
+        guard let map = getProperties(url: file) else {
             return .up
         }
         guard let orientation = map["Orientation"] as? UInt32 else {
@@ -189,7 +219,7 @@ public actor CGImageIO {
     
     /// Get the creation date of the image ``file``.
     public func getCreationDate(file: URL) -> Date? {
-        guard let exifMap = getExifMap(file: file)?["{Exif}"] as? Dictionary<String, Any> else {
+        guard let exifMap = getProperties(url: file)?["{Exif}"] as? Dictionary<String, Any> else {
             return nil
         }
         
@@ -210,13 +240,13 @@ public actor CGImageIO {
         return creationDate
     }
     
-    /// Get the exif map of the image ``file``.
-    public func getExifMap(file: URL) -> Dictionary<String, Any>? {
+    /// Get the exif map of the image ``url``.
+    public func getProperties(url: URL) -> Dictionary<String, Any>? {
         let options: [String: Any] = [
             kCGImageSourceShouldCacheImmediately as String: false,
         ]
         
-        guard let source = CGImageSourceCreateWithURL(file as CFURL, options as CFDictionary) else {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, options as CFDictionary) else {
             return nil
         }
         
@@ -230,8 +260,8 @@ public actor CGImageIO {
         return map
     }
     
-    /// Get the exif map of the image ``Data``.
-    public func getExifMap(data: Data) -> Dictionary<String, Any>? {
+    /// Get the properties of the image ``Data``.
+    public func getProperties(data: Data) -> Dictionary<String, Any>? {
         let options: [String: Any] = [
             kCGImageSourceShouldCacheImmediately as String: false,
         ]
@@ -248,5 +278,39 @@ public actor CGImageIO {
             return nil
         }
         return map
+    }
+    
+    /// Get the ``CGMutableImageMetadata`` of the image ``Data``.
+    public func getMutableMetadata(data: Data) -> CGMutableImageMetadata? {
+        let options: [String: Any] = [
+            kCGImageSourceShouldCacheImmediately as String: false,
+        ]
+        
+        guard let source = CGImageSourceCreateWithData(data as CFData, options as CFDictionary) else {
+            return nil
+        }
+        
+        guard let metadata = CGImageSourceCopyMetadataAtIndex(source, 0, nil) else {
+            return nil
+        }
+        
+        return CGImageMetadataCreateMutableCopy(metadata)
+    }
+    
+    /// Get the ``CGMutableImageMetadata`` of the image ``URL``.
+    public func getMutableMetadata(url: URL) -> CGMutableImageMetadata? {
+        let options: [String: Any] = [
+            kCGImageSourceShouldCacheImmediately as String: false,
+        ]
+        
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, options as CFDictionary) else {
+            return nil
+        }
+        
+        guard let metadata = CGImageSourceCopyMetadataAtIndex(source, 0, nil) else {
+            return nil
+        }
+        
+        return CGImageMetadataCreateMutableCopy(metadata)
     }
 }

@@ -261,6 +261,7 @@ public class UIImageViewer<
         }
     }
     
+    // MARK: UIImageViewerEditSourceProvider
     public func requestDelete(phAsset: PHAsset) {
         Task { @MainActor in
             if await MediaAssetWriter.shared.delete(asset: phAsset) {
@@ -283,6 +284,26 @@ public class UIImageViewer<
                     setCurrentController()
                 }
             }
+        }
+    }
+    
+    public func requestToggleFavorited(phAsset: PHAsset) {
+        Task { @MainActor in
+            if await requestToggleFavoritedInternal(phAsset: phAsset) {
+                await updateCurrentAsset()
+                updateOrnamentUI()
+            }
+        }
+    }
+    
+    private func requestToggleFavoritedInternal(phAsset: PHAsset) async -> Bool {
+        return await withCheckedContinuation { continuation in
+            PHPhotoLibrary.shared().performChanges({
+                let request = PHAssetChangeRequest(for: phAsset)
+                request.isFavorite = !phAsset.isFavorite
+            }, completionHandler: { success, error in
+                continuation.resume(returning: success)
+            })
         }
     }
     
@@ -355,6 +376,13 @@ public class UIImageViewer<
             self.requestDismiss(animated: true)
         }
         return controller
+    }
+    
+    private func updateCurrentAsset() async {
+        guard let current = currentViewController else {
+            return
+        }
+        await current.asset?.updateCurrentAsset()
     }
     
     private func updateOrnamentUI() {

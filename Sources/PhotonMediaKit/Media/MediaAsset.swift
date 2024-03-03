@@ -15,6 +15,7 @@ public var byteFormatter: ByteCountFormatter = {
 
 public protocol MediaAssetProvider: Equatable {
     var phAssetRes: MediaAssetRes { get }
+    func updateCurrentAsset() async
 }
 
 /// Contains a ``PHAsset`` and a dedicated ``PHAssetResource``.

@@ -200,9 +200,12 @@ public class GainMapUtils {
     public func cropGainMap(
         ciContext: CIContext,
         auxiliaryMap: Dictionary<CFString, Any>,
-        rect: CGRect
+        rect: CGRect,
+        rotateOrientationToUp: Bool
     ) async -> GainMapAuxiliaryDataResult? {
         return await applyTransformation(ciContext: ciContext, auxiliaryMap: auxiliaryMap) { ciImage, desc in
+            var mutableDesc = desc
+            
             var cropped = ciImage.cropped(to: rect)
             cropped = cropped.transformed(
                 by: CGAffineTransform.init(
@@ -211,7 +214,17 @@ public class GainMapUtils {
                 )
             )
             
-            var mutableDesc = desc
+            if rotateOrientationToUp {
+                let orientationValue = (mutableDesc[GainMapUtils.keyOrientation] as? UInt32) ?? 1
+                let orientation = CGImagePropertyOrientation(rawValue: orientationValue) ?? .up
+                
+                cropped = cropped.transformed(by: cropped.orientationTransform(for: orientation))
+            }
+            
+            let maxWidth = 2000.0
+            let scale = maxWidth / cropped.extent.width
+            cropped = cropped.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+            
             mutableDesc[GainMapUtils.keyWidth] = cropped.extent.width
             mutableDesc[GainMapUtils.keyHeight] = cropped.extent.height
             mutableDesc[GainMapUtils.keyBytesPerRow] = cropped.extent.width

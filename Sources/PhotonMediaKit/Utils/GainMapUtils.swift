@@ -201,7 +201,8 @@ public class GainMapUtils {
         ciContext: CIContext,
         auxiliaryMap: Dictionary<CFString, Any>,
         rect: CGRect,
-        rotateOrientationToUp: Bool
+        rotateOrientationToUp: Bool,
+        flipHorizontally: Bool
     ) async -> GainMapAuxiliaryDataResult? {
         return await applyTransformation(ciContext: ciContext, auxiliaryMap: auxiliaryMap) { ciImage, desc in
             var mutableDesc = desc
@@ -219,6 +220,10 @@ public class GainMapUtils {
                 let orientation = CGImagePropertyOrientation(rawValue: orientationValue) ?? .up
                 
                 cropped = cropped.transformed(by: cropped.orientationTransform(for: orientation))
+            }
+            
+            if flipHorizontally {
+                cropped = cropped.transformed(by: CGAffineTransform(scaleX: -1, y: 1))
             }
             
             let maxWidth = 2000.0

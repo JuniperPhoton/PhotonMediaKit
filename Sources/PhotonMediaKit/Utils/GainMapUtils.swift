@@ -226,9 +226,7 @@ public class GainMapUtils {
                 cropped = cropped.transformed(by: CGAffineTransform(scaleX: -1, y: 1))
             }
             
-            let maxWidth = 2000.0
-            let scale = maxWidth / cropped.extent.width
-            cropped = cropped.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+            cropped = restrictSize(cropped)
             
             mutableDesc[GainMapUtils.keyWidth] = cropped.extent.width
             mutableDesc[GainMapUtils.keyHeight] = cropped.extent.height
@@ -263,15 +261,12 @@ public class GainMapUtils {
                 return nil
             }
             
-            let transformed = ciImage.transformed(by: ciImage.orientationTransform(for: orientation))
+            var transformed = ciImage.transformed(by: ciImage.orientationTransform(for: orientation))
+            transformed = restrictSize(transformed)
             
-            let shouldSwapSize = orientationDegrees % 180 != 0
-            if shouldSwapSize {
-                mutableDesc[GainMapUtils.keyWidth] = transformed.extent.width
-                mutableDesc[GainMapUtils.keyHeight] = transformed.extent.height
-                mutableDesc[GainMapUtils.keyBytesPerRow] = transformed.extent.width
-            }
-            
+            mutableDesc[GainMapUtils.keyWidth] = transformed.extent.width
+            mutableDesc[GainMapUtils.keyHeight] = transformed.extent.height
+            mutableDesc[GainMapUtils.keyBytesPerRow] = transformed.extent.width
             mutableDesc[GainMapUtils.keyOrientation] = CGImagePropertyOrientation.up.rawValue
             
             return GainmainAuxiliaryImageResult(ciImage: transformed, desc: mutableDesc)
@@ -320,6 +315,12 @@ public class GainMapUtils {
         }
         
         return GainMapAuxiliaryDataResult(gainMapImageData: gainMapImageData, desc: mutableDesc)
+    }
+    
+    private func restrictSize(_ ciImage: CIImage) -> CIImage {
+        let maxWidth = 2000.0
+        let scale = maxWidth / ciImage.extent.width
+        return ciImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
     }
 }
 

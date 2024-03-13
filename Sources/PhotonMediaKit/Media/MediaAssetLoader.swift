@@ -302,10 +302,29 @@ public actor MediaAssetLoader {
             return nil
         }
         
+        let favoritesPredicate: NSPredicate?
+        switch filterOptions.favoritedOptions {
+        case .all:
+            favoritesPredicate = nil
+        case .favorited:
+            favoritesPredicate = NSPredicate(format: "isFavorite == %@", argumentArray: [NSNumber(booleanLiteral: true)])
+        case .nonFavorited:
+            favoritesPredicate = NSPredicate(format: "isFavorite == %@", argumentArray: [NSNumber(booleanLiteral: false)])
+        }
+        
+        let creationPredicate = NSPredicate(
+            format: "creationDate >= %@ && creationDate <= %@",
+            argumentArray: [fromDate, toDate]
+        )
+        
+        let sizePredicate = NSPredicate(format: "pixelWidth > 1920 || pixelHeight > 1920")
+        
         let allVideosOptions = PHFetchOptions()
         allVideosOptions.sortDescriptors = sortOption.asSortDescriptors()
-        allVideosOptions.predicate = NSPredicate(format: "creationDate >= %@ && creationDate <= %@ && (pixelWidth > 1920 || pixelHeight > 1920)",
-                                                 argumentArray: [fromDate, toDate])
+        allVideosOptions.predicate = NSCompoundPredicate(
+            type: .and,
+            subpredicates: [favoritesPredicate, creationPredicate, sizePredicate].compactMap { $0 }
+        )
         
         if let configure = configure {
             configure(allVideosOptions)
@@ -349,15 +368,34 @@ public actor MediaAssetLoader {
         collection: PHAssetCollection?,
         loadAssetResourcesInPlaceTypes: [UTType],
         sortOption: FetchSortOption = .creationDate(ascending: false),
+        favoritedOptions: FavoritedFilterOptions = .all,
         configure: ((PHFetchOptions) -> Void)? = nil
     ) async -> PHFetchTracableResult? {
         let fromDate = dateRange.lowerBound
         let toDate = dateRange.upperBound
         
+        let favoritesPredicate: NSPredicate?
+        switch favoritedOptions {
+        case .all:
+            favoritesPredicate = nil
+        case .favorited:
+            favoritesPredicate = NSPredicate(format: "isFavorite == %@", argumentArray: [NSNumber(booleanLiteral: true)])
+        case .nonFavorited:
+            favoritesPredicate = NSPredicate(format: "isFavorite == %@", argumentArray: [NSNumber(booleanLiteral: false)])
+        }
+        
+        let creationPredicate = NSPredicate(
+            format: "creationDate >= %@ && creationDate <= %@",
+            argumentArray: [fromDate, toDate]
+        )
+        
         let allPhotosOptions = PHFetchOptions()
         allPhotosOptions.sortDescriptors = sortOption.asSortDescriptors()
-        allPhotosOptions.predicate = NSPredicate(format: "creationDate >= %@ && creationDate <= %@",
-                                                 argumentArray: [fromDate, toDate])
+        allPhotosOptions.predicate = NSCompoundPredicate(
+            type: .and,
+            subpredicates: [favoritesPredicate, creationPredicate].compactMap { $0 }
+        )
+        
         if let configure = configure {
             configure(allPhotosOptions)
         }

@@ -5,3 +5,14 @@
   Created by Photon Juniper on 2022/12/24.
   
 */
+"FavoritedFilterOptionsAll" = "すべて";
+"FavoritedFilterOptionsFavorited" = "お気に入り";
+"FavoritedFilterOptionsNonFavorited" = "お気に入りではない";
+"equals" = "=";
+"lessThan" = "<";
+"greaterThan" = ">";
+"megaBytes" = "MB";
+"gigaBytes" = "GB";
+"seconds" = "秒";
+"minutes" = "分";
+"hours" = "時間";

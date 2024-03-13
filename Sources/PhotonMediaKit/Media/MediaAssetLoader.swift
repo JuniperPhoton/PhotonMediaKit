@@ -423,6 +423,7 @@ public actor MediaAssetLoader {
     public func fetchRawPhotosBySmartCollection(
         dateRange: ClosedRange<Date>,
         loadAssetResourcesInPlace: Bool,
+        favoritedOptions: FavoritedFilterOptions = .all,
         configure: ((PHFetchOptions) -> Void)? = nil
     ) async -> PHFetchTracableResult? {
         let options = PHFetchOptions()
@@ -445,6 +446,7 @@ public actor MediaAssetLoader {
             dateRange: dateRange,
             collection: rawCollection,
             loadAssetResourcesInPlaceTypes: [],
+            favoritedOptions: favoritedOptions,
             configure: configure
         )
     }

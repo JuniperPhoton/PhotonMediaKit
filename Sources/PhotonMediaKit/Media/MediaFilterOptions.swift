@@ -1,6 +1,6 @@
 //
 //  File.swift
-//  
+//
 //
 //  Created by Photon Juniper on 2023/10/30.
 //
@@ -19,6 +19,8 @@ public class MediaFilterOptions: ObservableObject {
     @Published public var filteredDuration: Double = 0.0
     @Published public var durationFilterOperation: FilterOperation = .greaterThan
     @Published public var filteredDurationUnit: DurationUnit = .minutes
+    
+    @Published public var favoritedOptions: FavoritedFilterOptions = .all
     
     public init() {
         // empty
@@ -112,6 +114,18 @@ public enum FilterOperation: String, CaseIterable, Hashable, Localizable, Identi
     case lessThan
     case equals
     case greaterThan
+    
+    public var id: String { self.rawValue }
+    
+    public var localizedStringKey: LocalizedStringKey {
+        LocalizedStringKey(self.rawValue)
+    }
+}
+
+public enum FavoritedFilterOptions: String, CaseIterable, Hashable, Localizable, Identifiable {
+    case all = "FavoritedFilterOptionsAll"
+    case favorited = "FavoritedFilterOptionsFavorited"
+    case nonFavorited = "FavoritedFilterOptionsNonFavorited"
     
     public var id: String { self.rawValue }
     

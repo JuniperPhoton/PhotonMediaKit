@@ -5,3 +5,9 @@
   Created by Photon Juniper on 2022/12/24.
   
 */
+"FavoritedFilterOptionsAll" = "すべて";
+"FavoritedFilterOptionsFavorited" = "お気に入り";
+"FavoritedFilterOptionsNonFavorited" = "お気に入りではない";
+"equals" = "=";
+"lessThan" = "<";
+"greaterThan" = ">";

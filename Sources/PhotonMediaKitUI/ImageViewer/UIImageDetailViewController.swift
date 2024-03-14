@@ -67,9 +67,9 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         // Since it's resizing is based on the frame.
         scrollView.frame = self.view.bounds
         
-        self.view.addSubview(loadingView)
+        showLoadingView()
         self.view.addSubview(scrollView)
-        
+
         currentViewSize = self.view.frame.size
         
         if startFrame != .zero {
@@ -84,19 +84,19 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         if loadingView.superview != nil {
             return
         }
+                
+        let superBounds = self.view.bounds
+        let loadingViewBounds = loadingView.bounds
+        
+        if superBounds.isEmpty || loadingViewBounds.isEmpty {
+            return
+        }
         
         self.view.addSubview(loadingView)
         
-        // Disable autoresizing mask translation for loadingView
-        loadingView.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Define constraints to pin loadingView to all edges of its superview
-        NSLayoutConstraint.activate([
-            loadingView.topAnchor.constraint(equalTo: view.topAnchor),
-            loadingView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            loadingView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            loadingView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-        ])
+        let x = superBounds.width / 2 - loadingViewBounds.width / 2
+        let y = superBounds.height / 2 - loadingViewBounds.height / 2
+        loadingView.frame = CGRect(x: x, y: y, width: loadingView.bounds.width, height: loadingView.bounds.height)
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -187,8 +187,11 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         
         loadTask?.cancel()
         loadTask = Task {
-            await loadThenDisplayImage(assetRes: asset,
-                                       option: .size(w: currentViewSize.width, h: currentViewSize.height), version: .current)
+            await loadThenDisplayImage(
+                assetRes: asset,
+                option: .size(w: currentViewSize.width, h: currentViewSize.height),
+                version: .current
+            )
             loadTask = nil
         }
     }
@@ -237,8 +240,6 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         option: MediaAssetLoader.FetchOption,
         version: MediaAssetVersion
     ) async {
-        showLoadingView()
-        
         guard let fullSizeImage = await MediaAssetLoader().fetchUIImage(
             phAsset: assetRes.phAssetRes.phAsset,
             option: option,

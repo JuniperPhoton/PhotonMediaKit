@@ -86,7 +86,7 @@ public class UIImageViewer<
             action()
         }
         
-        setCurrentController()
+        setCurrentController(direction: .forward)
         
         if let scrollView = getScrollView() {
             let pan = UIPanGestureRecognizer(target: self, action: #selector(onPan))
@@ -193,7 +193,7 @@ public class UIImageViewer<
         }
     }
     
-    private func setCurrentController() {
+    private func setCurrentController(direction: NavigationDirection) {
         guard let firstImage = images[safeIndex: syncer.currentIndex] else {
             return
         }
@@ -204,7 +204,7 @@ public class UIImageViewer<
         }
         
         currentViewController = controller
-        setViewControllers([controller], direction: .forward, animated: true)
+        setViewControllers([controller], direction: direction, animated: true)
         updateOrnamentUI()
     }
     
@@ -274,14 +274,14 @@ public class UIImageViewer<
                     
                     let lower = 0
                     let upper = self.images.count - 1
-                    if lower >= upper {
+                    if lower > upper {
                         self.requestDismiss(animated: false)
                         return
                     }
                     
                     currentIndex = currentIndex.clamp(to: lower...upper)
                     syncer.currentIndex = currentIndex
-                    setCurrentController()
+                    setCurrentController(direction: currentIndex >= index ? .forward : .reverse)
                 }
             }
         }

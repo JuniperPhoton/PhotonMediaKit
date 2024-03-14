@@ -70,19 +70,6 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         self.view.addSubview(loadingView)
         self.view.addSubview(scrollView)
         
-        // Disable autoresizing mask translation for loadingView
-        loadingView.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Define constraints to pin loadingView to all edges of its superview
-        if let superview = loadingView.superview {
-            NSLayoutConstraint.activate([
-                loadingView.topAnchor.constraint(equalTo: superview.topAnchor),
-                loadingView.leadingAnchor.constraint(equalTo: superview.leadingAnchor),
-                loadingView.trailingAnchor.constraint(equalTo: superview.trailingAnchor),
-                loadingView.bottomAnchor.constraint(equalTo: superview.bottomAnchor)
-            ])
-        }
-        
         currentViewSize = self.view.frame.size
         
         if startFrame != .zero {
@@ -90,6 +77,26 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         } else {
             loadFullImage()
         }
+    }
+    
+    @MainActor
+    private func showLoadingView() {
+        if loadingView.superview != nil {
+            return
+        }
+        
+        self.view.addSubview(loadingView)
+        
+        // Disable autoresizing mask translation for loadingView
+        loadingView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Define constraints to pin loadingView to all edges of its superview
+        NSLayoutConstraint.activate([
+            loadingView.topAnchor.constraint(equalTo: view.topAnchor),
+            loadingView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            loadingView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            loadingView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -137,7 +144,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             
             // By this point, the transition animation should be ended. Then we load the full size image.
             if let fullSizeImage = await fullSizeImageTask {
-                displayImage(uiImage: fullSizeImage, enableZoom: !asset.phAssetRes.isVideo)
+                displayImage(fullSizeImage: fullSizeImage, enableZoom: !asset.phAssetRes.isVideo)
                 configureForMediaType()
             }
         }
@@ -165,7 +172,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             }
             
             if let fullSizeImage = await fullSizeImageTask {
-                displayImage(uiImage: fullSizeImage, enableZoom: true)
+                displayImage(fullSizeImage: fullSizeImage, enableZoom: true)
                 configureForMediaType()
             }
             
@@ -224,10 +231,15 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         )
     }
     
-    private func loadThenDisplayImage(assetRes: AssetProvider,
-                                      option: MediaAssetLoader.FetchOption,
-                                      version: MediaAssetVersion) async {
-        guard let uiImage = await MediaAssetLoader().fetchUIImage(
+    @MainActor
+    private func loadThenDisplayImage(
+        assetRes: AssetProvider,
+        option: MediaAssetLoader.FetchOption,
+        version: MediaAssetVersion
+    ) async {
+        showLoadingView()
+        
+        guard let fullSizeImage = await MediaAssetLoader().fetchUIImage(
             phAsset: assetRes.phAssetRes.phAsset,
             option: option,
             version: version,
@@ -237,9 +249,10 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         }
         
         displayImage(
-            uiImage: uiImage,
+            fullSizeImage: fullSizeImage,
             enableZoom: option == MediaAssetLoader.FetchOption.full && !assetRes.phAssetRes.isVideo
         )
+        
         configureForMediaType()
     }
     
@@ -321,9 +334,11 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         self.present(alertController, animated: true)
     }
     
-    private func displayImage(uiImage: UIImage, enableZoom: Bool) {
-        scrollView.display(image: uiImage)
+    @MainActor
+    private func displayImage(fullSizeImage: UIImage, enableZoom: Bool) {
+        scrollView.display(image: fullSizeImage)
         scrollView.isUserInteractionEnabled = enableZoom
+        loadingView.removeFromSuperview()
     }
     
     private func displayImageForTransition(uiImage: UIImage, enableZoom: Bool) async {

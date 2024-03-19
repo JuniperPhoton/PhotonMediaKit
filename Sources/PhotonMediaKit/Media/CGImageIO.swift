@@ -102,7 +102,13 @@ public actor CGImageIO {
     /// - parameter file: file URL  to be saved into
     /// - parameter data: the data to be saved
     /// - parameter utType: a ``UTType`` to identify the image format
-    public func saveToFile(file: URL, data: Data, utType: UTType) throws -> URL {
+    /// - parameter includedAuxiliaryDataTypes: An array of ``AuxiliaryDataType`` to be preserved.
+    public func saveToFile(
+        file: URL,
+        data: Data,
+        utType: UTType,
+        includedAuxiliaryDataTypes: [AuxiliaryDataType] = AuxiliaryDataType.allCases
+    ) throws -> URL {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
             throw IOError()
         }
@@ -112,15 +118,22 @@ public actor CGImageIO {
         }
         
         let metadata = CGImageSourceCopyPropertiesAtIndex(source, 0, nil)
-        guard let dest = CGImageDestinationCreateWithURL(file as CFURL,
-                                                         utType.identifier as CFString, 1, nil) else {
+        
+        guard let dest = CGImageDestinationCreateWithURL(
+            file as CFURL,
+            utType.identifier as CFString,
+            1,
+            nil
+        ) else {
             throw IOError()
         }
         
         CGImageDestinationAddImage(dest, cgImage, metadata)
         
-        if let auxiliaryData = CGImageSourceCopyAuxiliaryDataInfoAtIndex(source, 0, kCGImageAuxiliaryDataTypeHDRGainMap) {
-            CGImageDestinationAddAuxiliaryDataInfo(dest, kCGImageAuxiliaryDataTypeHDRGainMap, auxiliaryData)
+        for type in includedAuxiliaryDataTypes {
+            if let auxiliaryData = CGImageSourceCopyAuxiliaryDataInfoAtIndex(source, 0, type.cgImageKey) {
+                CGImageDestinationAddAuxiliaryDataInfo(dest, type.cgImageKey, auxiliaryData)
+            }
         }
         
         if CGImageDestinationFinalize(dest) {
@@ -139,17 +152,23 @@ public actor CGImageIO {
         cgImage: CGImage,
         utType: UTType,
         properties: CFDictionary? = nil,
-        auxiliaryData: CFDictionary? = nil
+        auxiliaryData: Dictionary<AuxiliaryDataType, CFDictionary?> = [:]
     ) throws -> URL {
-        guard let dest = CGImageDestinationCreateWithURL(file as CFURL,
-                                                         utType.identifier as CFString, 1, nil) else {
+        guard let dest = CGImageDestinationCreateWithURL(
+            file as CFURL,
+            utType.identifier as CFString,
+            1,
+            nil
+        ) else {
             throw IOError("Failed to create image destination")
         }
         
         CGImageDestinationAddImage(dest, cgImage, properties)
         
-        if let auxiliaryData = auxiliaryData {
-            CGImageDestinationAddAuxiliaryDataInfo(dest, kCGImageAuxiliaryDataTypeHDRGainMap, auxiliaryData)
+        for (k, v) in auxiliaryData {
+            if let dic = v {
+                CGImageDestinationAddAuxiliaryDataInfo(dest, k.cgImageKey, dic)
+            }
         }
         
         if CGImageDestinationFinalize(dest) {
@@ -163,23 +182,30 @@ public actor CGImageIO {
     /// - parameter file: file URL  to be saved into
     /// - parameter cgImage: the image to be saved
     /// - parameter utType: a ``UTType`` to identify the image format
-    /// - parameter metadata: metadata creating with ``CGImageSourceCopyMetadataAtIndex``. Note that changing the tiff:Orientation in this metadata won't work.
+    /// - parameter metadata: metadata creating with ``CGImageSourceCopyMetadataAtIndex``. 
+    /// Note that changing the tiff:Orientation in this metadata won't work.
     public func saveToFile(
         file: URL,
         cgImage: CGImage,
         utType: UTType,
         metadata: CGImageMetadata? = nil,
-        auxiliaryData: CFDictionary? = nil
+        auxiliaryData: Dictionary<AuxiliaryDataType, CFDictionary?> = [:]
     ) throws -> URL {
-        guard let dest = CGImageDestinationCreateWithURL(file as CFURL,
-                                                         utType.identifier as CFString, 1, nil) else {
+        guard let dest = CGImageDestinationCreateWithURL(
+            file as CFURL,
+            utType.identifier as CFString,
+            1,
+            nil
+        ) else {
             throw IOError("Failed to create image destination")
         }
                 
         CGImageDestinationAddImageAndMetadata(dest, cgImage, metadata, nil)
         
-        if let auxiliaryData = auxiliaryData {
-            CGImageDestinationAddAuxiliaryDataInfo(dest, kCGImageAuxiliaryDataTypeHDRGainMap, auxiliaryData)
+        for (k, v) in auxiliaryData {
+            if let dic = v {
+                CGImageDestinationAddAuxiliaryDataInfo(dest, k.cgImageKey, dic)
+            }
         }
                 
         if CGImageDestinationFinalize(dest) {
@@ -312,5 +338,22 @@ public actor CGImageIO {
         }
         
         return CGImageMetadataCreateMutableCopy(metadata)
+    }
+    
+    /// Extract the auxiliary data and parse as ``CFDictionary``.
+    public func extractAuxiliaryDictionary(data: Data, type: AuxiliaryDataType) -> CFDictionary? {
+        let options: [String: Any] = [
+            kCGImageSourceShouldCacheImmediately as String: false,
+        ]
+        
+        guard let source = CGImageSourceCreateWithData(data as CFData, options as CFDictionary) else {
+            return nil
+        }
+        
+        guard let auxiliaryData = CGImageSourceCopyAuxiliaryDataInfoAtIndex(source, 0, type.cgImageKey) else {
+            return nil
+        }
+        
+        return auxiliaryData
     }
 }

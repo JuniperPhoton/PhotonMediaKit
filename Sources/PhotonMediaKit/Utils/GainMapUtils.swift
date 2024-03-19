@@ -18,7 +18,7 @@ public struct GainMapAuxiliaryDataResult {
     }
 }
 
-public struct GainmainAuxiliaryImageResult {
+public struct GainMapAuxiliaryImageResult {
     public let ciImage: CIImage
     public let desc: Dictionary<String, Any>
     
@@ -102,19 +102,7 @@ public class GainMapUtils {
     
     /// Extract the HDR gain map original data and parse as ``CFDictionary``.
     public func extractGainMapDictionary(data: Data) async -> CFDictionary? {
-        let options: [String: Any] = [
-            kCGImageSourceShouldCacheImmediately as String: false,
-        ]
-        
-        guard let source = CGImageSourceCreateWithData(data as CFData, options as CFDictionary) else {
-            return nil
-        }
-        
-        guard let auxiliaryData = CGImageSourceCopyAuxiliaryDataInfoAtIndex(source, 0, kCGImageAuxiliaryDataTypeHDRGainMap) else {
-            return nil
-        }
-        
-        return auxiliaryData
+        return await CGImageIO.shared.extractAuxiliaryDictionary(data: data, type: .hdrGainMap)
     }
     
     /// Extract the gain map size.
@@ -232,7 +220,7 @@ public class GainMapUtils {
             mutableDesc[GainMapUtils.keyHeight] = cropped.extent.height
             mutableDesc[GainMapUtils.keyBytesPerRow] = cropped.extent.width
             
-            return GainmainAuxiliaryImageResult(ciImage: cropped, desc: mutableDesc)
+            return GainMapAuxiliaryImageResult(ciImage: cropped, desc: mutableDesc)
         }
     }
     
@@ -269,7 +257,7 @@ public class GainMapUtils {
             mutableDesc[GainMapUtils.keyBytesPerRow] = transformed.extent.width
             mutableDesc[GainMapUtils.keyOrientation] = CGImagePropertyOrientation.up.rawValue
             
-            return GainmainAuxiliaryImageResult(ciImage: transformed, desc: mutableDesc)
+            return GainMapAuxiliaryImageResult(ciImage: transformed, desc: mutableDesc)
         }
     }
     
@@ -281,7 +269,7 @@ public class GainMapUtils {
     public func applyTransformation(
         ciContext: CIContext,
         auxiliaryMap: Dictionary<CFString, Any>,
-        action: (CIImage, Dictionary<String, Any>) -> GainmainAuxiliaryImageResult?
+        action: (CIImage, Dictionary<String, Any>) -> GainMapAuxiliaryImageResult?
     ) async -> GainMapAuxiliaryDataResult? {
         guard var mutableDesc = auxiliaryMap[kCGImageAuxiliaryDataInfoDataDescription] as? Dictionary<String, Any> else {
             return nil

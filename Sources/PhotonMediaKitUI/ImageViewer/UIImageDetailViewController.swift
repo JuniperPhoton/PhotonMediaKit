@@ -355,7 +355,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             scrollView.display(image: uiImage)
             scrollView.isUserInteractionEnabled = enableZoom
             
-            UIView.animate(withDuration: 0.2, delay: 0, options: .curveEaseOut) {
+            let animation = {
                 let currentFrame = self.view.bounds
                 let x = currentFrame.midX - self.startFrame.width / 2
                 let y = currentFrame.midY - self.startFrame.height / 2
@@ -367,12 +367,28 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
                 
                 let scale = min(scaledX, scaledY)
                 self.scrollView.transform = originalTransform.translatedBy(x: x, y: y).scaledBy(x: scale, y: scale)
-            } completion: { success in
+            }
+            
+            let completion = {
                 self.scrollView.transform = originalTransform
                 self.scrollView.frame = self.view.bounds
                 self.scrollView.reconfigureImageSize()
                 
                 continuation.resume()
+            }
+            
+            if #available(iOS 17.0, *) {
+                UIView.animate(springDuration: 0.3, bounce: 0.3) {
+                    animation()
+                } completion: { _ in
+                    completion()
+                }
+            } else {
+                UIView.animate(withDuration: 0.2, delay: 0, options: .curveEaseInOut) {
+                    animation()
+                } completion: { _ in
+                    completion()
+                }
             }
         }
     }

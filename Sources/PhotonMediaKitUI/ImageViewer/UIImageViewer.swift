@@ -308,7 +308,7 @@ public class UIImageViewer<
     }
     
     private func animateToDismiss(targetView: UIView) {
-        UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseOut) {
+        UIView.animate(withDuration: 0.2, delay: 0, options: .curveEaseOut) {
             targetView.transform = CGAffineTransform(translationX: 0, y: self.view.frame.height)
             self.view.alpha = 0.0
         } completion: { _ in

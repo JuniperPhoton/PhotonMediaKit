@@ -377,18 +377,10 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
                 continuation.resume()
             }
             
-            if #available(iOS 17.0, *) {
-                UIView.animate(springDuration: 0.3, bounce: 0.3) {
-                    animation()
-                } completion: { _ in
-                    completion()
-                }
-            } else {
-                UIView.animate(withDuration: 0.2, delay: 0, options: .curveEaseInOut) {
-                    animation()
-                } completion: { _ in
-                    completion()
-                }
+            UIView.animate(withDuration: 0.2, delay: 0, options: .curveEaseOut) {
+                animation()
+            } completion: { _ in
+                completion()
             }
         }
     }

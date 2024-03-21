@@ -292,6 +292,54 @@ public class MediaAssetWriter {
         }
     }
     
+    /// Edit the ``PHAsset`` and provide the edited version of it.
+    /// - parameter asset: The asset to be edited.
+    /// - parameter editedFileURL: The JPEG file URL for the edited version of it. Note that this MUST be JPEG.
+    /// - parameter data: The ``PHAdjustmentData`` describing the changes.
+    public func provideEditedVersion(
+        asset: PHAsset,
+        editedFileURL: URL,
+        data: PHAdjustmentData,
+        deleteOnComplete: Bool
+    ) async -> Bool {
+        return await withCheckedContinuation { continuation in
+            asset.requestContentEditingInput(with: nil) { input, _ in
+                if let input = input {
+                    let output = PHContentEditingOutput(contentEditingInput: input)
+                    output.adjustmentData = data
+                    
+                    do {
+                        // For iOS 17.0, we can use renderedContentURL(for type: UTType) to use other UTType other than JPEG.
+                        // But for now we don't support this yet.
+                        let renderURL = output.renderedContentURL
+                        try FileManager.default.copyItem(at: editedFileURL, to: renderURL)
+                        
+                        PHPhotoLibrary.shared().performChanges {
+                            let changed = PHAssetChangeRequest(for: asset)
+                            changed.contentEditingOutput = output
+                        } completionHandler: { success, error in
+                            if !success {
+                                LibLogger.libDefault.error("failed to perform changed for PHAsset, error: \(error)")
+                            }
+                            
+                            if deleteOnComplete {
+                                try? FileManager.default.removeItem(at: editedFileURL)
+                            }
+                            continuation.resume(returning: success)
+                        }
+                    } catch {
+                        if deleteOnComplete {
+                            try? FileManager.default.removeItem(at: editedFileURL)
+                        }
+                        
+                        continuation.resume(returning: false)
+                        LibLogger.libDefault.error("error copying item \(error)")
+                    }
+                }
+            }
+        }
+    }
+    
     public func delete(asset: PHAsset) async -> Bool {
         return await delete(assets: [asset])
     }

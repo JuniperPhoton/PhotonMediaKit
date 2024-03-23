@@ -8,13 +8,16 @@
 import Foundation
 import CoreImage
 
+/// Represent the types of all supported auxiliary data.
+///
+/// To access the key from CGImage framework, use ``cgImageKey`` property.
 public enum AuxiliaryDataType: CaseIterable {
     case hdrGainMap
     case depth
     case disparity
     case portraitEffectsMatte
     
-    var cgImageKey: CFString {
+    public var cgImageKey: CFString {
         switch self {
         case .hdrGainMap:
             kCGImageAuxiliaryDataTypeHDRGainMap

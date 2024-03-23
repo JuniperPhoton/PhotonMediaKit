@@ -27,10 +27,17 @@ let package = Package(
         .target(
             name: "PhotonMediaKit",
             dependencies: [
-                "PhotonUtilityKit"
+                "PhotonUtilityKit",
+                "PhotonMediaKitObjc"
             ],
             resources: [
                 .process("Resources"),
+            ]
+        ),
+        .target(
+            name: "PhotonMediaKitObjc",
+            cSettings: [
+                .headerSearchPath("include")
             ]
         ),
         .target(
@@ -42,6 +49,7 @@ let package = Package(
         ),
         .testTarget(
             name: "PhotonMediaKitTests",
-            dependencies: ["PhotonMediaKit"]),
+            dependencies: ["PhotonMediaKit"]
+        ),
     ]
 )

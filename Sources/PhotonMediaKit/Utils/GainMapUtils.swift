@@ -193,35 +193,52 @@ public class GainMapUtils {
         flipHorizontally: Bool
     ) async -> GainMapAuxiliaryDataResult? {
         return await applyTransformation(ciContext: ciContext, auxiliaryMap: auxiliaryMap) { ciImage, desc in
-            var mutableDesc = desc
-            
-            var cropped = ciImage.cropped(to: rect)
-            cropped = cropped.transformed(
-                by: CGAffineTransform.init(
-                    translationX: -cropped.extent.minX,
-                    y: -cropped.extent.minY
-                )
+            return processCrop(
+                ciImage: ciImage,
+                metadata: desc,
+                rect: rect,
+                rotateOrientationToUp: rotateOrientationToUp,
+                flipHorizontally: flipHorizontally
             )
-            
-            if rotateOrientationToUp {
-                let orientationValue = (mutableDesc[GainMapUtils.keyOrientation] as? UInt32) ?? 1
-                let orientation = CGImagePropertyOrientation(rawValue: orientationValue) ?? .up
-                
-                cropped = cropped.transformed(by: cropped.orientationTransform(for: orientation))
-            }
-            
-            if flipHorizontally {
-                cropped = cropped.transformed(by: CGAffineTransform(scaleX: -1, y: 1))
-            }
-            
-            cropped = restrictSize(cropped)
-            
-            mutableDesc[GainMapUtils.keyWidth] = cropped.extent.width
-            mutableDesc[GainMapUtils.keyHeight] = cropped.extent.height
-            mutableDesc[GainMapUtils.keyBytesPerRow] = cropped.extent.width
-            
-            return GainMapAuxiliaryImageResult(ciImage: cropped, desc: mutableDesc)
         }
+    }
+    
+    /// Helper method to crop the gain map image and update the metadata.
+    public func processCrop(
+        ciImage: CIImage,
+        metadata: Dictionary<String, Any>,
+        rect: CGRect,
+        rotateOrientationToUp: Bool,
+        flipHorizontally: Bool
+    ) -> GainMapAuxiliaryImageResult {
+        var mutableDesc = metadata
+        
+        var cropped = ciImage.cropped(to: rect)
+        cropped = cropped.transformed(
+            by: CGAffineTransform.init(
+                translationX: -cropped.extent.minX,
+                y: -cropped.extent.minY
+            )
+        )
+        
+        if rotateOrientationToUp {
+            let orientationValue = (mutableDesc[GainMapUtils.keyOrientation] as? UInt32) ?? 1
+            let orientation = CGImagePropertyOrientation(rawValue: orientationValue) ?? .up
+            
+            cropped = cropped.transformed(by: cropped.orientationTransform(for: orientation))
+        }
+        
+        if flipHorizontally {
+            cropped = cropped.transformed(by: CGAffineTransform(scaleX: -1, y: 1))
+        }
+        
+        cropped = restrictSize(cropped)
+        
+        mutableDesc[GainMapUtils.keyWidth] = cropped.extent.width
+        mutableDesc[GainMapUtils.keyHeight] = cropped.extent.height
+        mutableDesc[GainMapUtils.keyBytesPerRow] = cropped.extent.width
+        
+        return GainMapAuxiliaryImageResult(ciImage: cropped, desc: mutableDesc)
     }
     
     /// Read the ``CGImagePropertyOrientation`` from the desc map and rotate the auxiliary image based on the orientation

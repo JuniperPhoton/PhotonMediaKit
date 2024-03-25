@@ -16,7 +16,7 @@ public class MetalUtils {
         // empty
     }
     
-    func allocateOutputBuffers(
+    public func allocateOutputBuffers(
         with formatDescription: CMFormatDescription,
         outputRetainedBufferCountHint: Int
     ) -> CVPixelBufferPool? {
@@ -42,7 +42,7 @@ public class MetalUtils {
         return pixelBufferPool
     }
     
-    func makeTextureFromCVPixelBuffer(
+    public func makeTextureFromCVPixelBuffer(
         pixelBuffer: CVPixelBuffer,
         textureFormat: MTLPixelFormat,
         textureCache: CVMetalTextureCache

@@ -9,11 +9,18 @@ import Foundation
 import AVFoundation
 import CoreImage
 
+public struct ColorWithComponents {
+    public let red: CGFloat
+    public let green: CGFloat
+    public let blue: CGFloat
+    public let alpha: CGFloat
+}
+
 /// Provides utility methods for depth map.
 public class DepthMapUtils {
     public static let shared = DepthMapUtils()
     
-    static let supportedFormats = [
+    public static let supportedFormats = [
         kCVPixelFormatType_DisparityFloat16,
         kCVPixelFormatType_DisparityFloat32,
         kCVPixelFormatType_DepthFloat16,
@@ -22,6 +29,10 @@ public class DepthMapUtils {
     
     private init() {
         // empty
+    }
+    
+    public func isPixelFormatSupported(_ format: OSType) -> Bool {
+        return DepthMapUtils.supportedFormats.contains(format)
     }
     
     /// Create ``AVDepthData`` from a disparity ``CIImage``.
@@ -161,5 +172,47 @@ public class DepthMapUtils {
         }
         
         return depthData
+    }
+    
+    /// Get the pixel value of the buffer, given a x and y position.
+    /// - parameter bgra32GrayscaleBuffer: The ``CVPixelBuffer`` which is in the format of ``kCVPixelFormatType_32BGRA``.
+    public func getPixelValue(from bgra32GrayscaleBuffer: CVPixelBuffer, atX x: Int, y: Int) -> ColorWithComponents? {
+        let width = CVPixelBufferGetWidth(bgra32GrayscaleBuffer)
+        let height = CVPixelBufferGetHeight(bgra32GrayscaleBuffer)
+        
+        // Check if the coordinates are within the pixel buffer bounds
+        guard x >= 0, x < width, y >= 0, y < height else {
+            return nil
+        }
+        
+        let format = CVPixelBufferGetPixelFormatType(bgra32GrayscaleBuffer)
+        if format != kCVPixelFormatType_32BGRA {
+            return nil
+        }
+        
+        CVPixelBufferLockBaseAddress(bgra32GrayscaleBuffer, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(bgra32GrayscaleBuffer, .readOnly) }
+        
+        // Get the base address of the pixel buffer
+        guard let baseAddress = CVPixelBufferGetBaseAddress(bgra32GrayscaleBuffer) else {
+            return nil
+        }
+        
+        // Calculate the byte-per-row value for the pixel buffer
+        let bytesPerRow = CVPixelBufferGetBytesPerRow(bgra32GrayscaleBuffer)
+        
+        // Calculate the byte offset for the (x, y) coordinate
+        let byteOffset = (bytesPerRow * y) + (x * 4) // 4 bytes per pixel for BGRA
+        
+        // Get the pixel data
+        let pixelData = baseAddress.advanced(by: byteOffset).assumingMemoryBound(to: UInt8.self)
+        
+        // Extract the BGRA components
+        let blue = CGFloat(pixelData[0]) / 255.0
+        let green = CGFloat(pixelData[1]) / 255.0
+        let red = CGFloat(pixelData[2]) / 255.0
+        let alpha = CGFloat(pixelData[3]) / 255.0
+        
+        return ColorWithComponents(red: red, green: green, blue: blue, alpha: alpha)
     }
 }

@@ -175,31 +175,72 @@ public class DepthMapUtils {
     }
     
     /// Get the pixel value of the buffer, given a x and y position.
-    /// - parameter bgra32GrayscaleBuffer: The ``CVPixelBuffer`` which is in the format of ``kCVPixelFormatType_32BGRA``.
-    public func getPixelValue(from bgra32GrayscaleBuffer: CVPixelBuffer, atX x: Int, y: Int) -> ColorWithComponents? {
-        let width = CVPixelBufferGetWidth(bgra32GrayscaleBuffer)
-        let height = CVPixelBufferGetHeight(bgra32GrayscaleBuffer)
+    /// - parameter grayscaleBuffer: The ``CVPixelBuffer`` which should be one of the format of:
+    ///  ``kCVPixelFormatType_32BGRA``
+    ///  ``kCVPixelFormatType_32ABGR``
+    ///  ``kCVPixelFormatType_32ARGB``
+    ///  ``kCVPixelFormatType_32RGBA``
+    public func getPixelValue(from grayscaleBuffer: CVPixelBuffer, atX x: Int, y: Int) -> ColorWithComponents? {
+        let width = CVPixelBufferGetWidth(grayscaleBuffer)
+        let height = CVPixelBufferGetHeight(grayscaleBuffer)
         
         // Check if the coordinates are within the pixel buffer bounds
         guard x >= 0, x < width, y >= 0, y < height else {
             return nil
         }
         
-        let format = CVPixelBufferGetPixelFormatType(bgra32GrayscaleBuffer)
-        if format != kCVPixelFormatType_32BGRA {
+        let supportedFormats = [
+            kCVPixelFormatType_32BGRA,
+            kCVPixelFormatType_32ABGR,
+            kCVPixelFormatType_32ARGB,
+            kCVPixelFormatType_32RGBA
+        ]
+        
+        let format = CVPixelBufferGetPixelFormatType(grayscaleBuffer)
+        if !supportedFormats.contains(format) {
             return nil
         }
         
-        CVPixelBufferLockBaseAddress(bgra32GrayscaleBuffer, .readOnly)
-        defer { CVPixelBufferUnlockBaseAddress(bgra32GrayscaleBuffer, .readOnly) }
+        let blueIndex: Int
+        let greenIndex: Int
+        let redIndex: Int
+        let alphaIndex: Int
+        
+        switch format {
+        case kCVPixelFormatType_32BGRA:
+            blueIndex = 0
+            greenIndex = 1
+            redIndex = 2
+            alphaIndex = 3
+        case kCVPixelFormatType_32ABGR:
+            blueIndex = 1
+            greenIndex = 2
+            redIndex = 3
+            alphaIndex = 0
+        case kCVPixelFormatType_32ARGB:
+            blueIndex = 3
+            greenIndex = 2
+            redIndex = 1
+            alphaIndex = 0
+        case kCVPixelFormatType_32RGBA:
+            blueIndex = 2
+            greenIndex = 1
+            redIndex = 0
+            alphaIndex = 3
+        default:
+            return nil
+        }
+        
+        CVPixelBufferLockBaseAddress(grayscaleBuffer, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(grayscaleBuffer, .readOnly) }
         
         // Get the base address of the pixel buffer
-        guard let baseAddress = CVPixelBufferGetBaseAddress(bgra32GrayscaleBuffer) else {
+        guard let baseAddress = CVPixelBufferGetBaseAddress(grayscaleBuffer) else {
             return nil
         }
         
         // Calculate the byte-per-row value for the pixel buffer
-        let bytesPerRow = CVPixelBufferGetBytesPerRow(bgra32GrayscaleBuffer)
+        let bytesPerRow = CVPixelBufferGetBytesPerRow(grayscaleBuffer)
         
         // Calculate the byte offset for the (x, y) coordinate
         let byteOffset = (bytesPerRow * y) + (x * 4) // 4 bytes per pixel for BGRA
@@ -208,10 +249,10 @@ public class DepthMapUtils {
         let pixelData = baseAddress.advanced(by: byteOffset).assumingMemoryBound(to: UInt8.self)
         
         // Extract the BGRA components
-        let blue = CGFloat(pixelData[0]) / 255.0
-        let green = CGFloat(pixelData[1]) / 255.0
-        let red = CGFloat(pixelData[2]) / 255.0
-        let alpha = CGFloat(pixelData[3]) / 255.0
+        let blue = CGFloat(pixelData[blueIndex]) / 255.0
+        let green = CGFloat(pixelData[greenIndex]) / 255.0
+        let red = CGFloat(pixelData[redIndex]) / 255.0
+        let alpha = CGFloat(pixelData[alphaIndex]) / 255.0
         
         return ColorWithComponents(red: red, green: green, blue: blue, alpha: alpha)
     }

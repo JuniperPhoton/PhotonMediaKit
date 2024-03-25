@@ -286,7 +286,7 @@ public class GainMapUtils {
     public func applyTransformation(
         ciContext: CIContext,
         auxiliaryMap: Dictionary<CFString, Any>,
-        action: (CIImage, Dictionary<String, Any>) -> GainMapAuxiliaryImageResult?
+        action: (CIImage, Dictionary<String, Any>) async -> GainMapAuxiliaryImageResult?
     ) async -> GainMapAuxiliaryDataResult? {
         guard var mutableDesc = auxiliaryMap[kCGImageAuxiliaryDataInfoDataDescription] as? Dictionary<String, Any> else {
             return nil
@@ -308,7 +308,7 @@ public class GainMapUtils {
             size: CGSize(width: originalWidth, height: originalHeight)
         )
         
-        guard let result = action(ciImage, mutableDesc) else {
+        guard let result = await action(ciImage, mutableDesc) else {
             return nil
         }
         

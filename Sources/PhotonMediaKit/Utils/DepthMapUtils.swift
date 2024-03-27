@@ -174,6 +174,46 @@ public class DepthMapUtils {
         return depthData
     }
     
+    /// Get the relative focus value for creating mask.
+    /// This method will read the pixel value in the grayscale image and return its red component.
+    ///
+    /// - parameter relativeFocusLocation: The normalized location representing the focus point in the image.
+    /// - parameter grayscaleImage: The grayscale image to be sampled.
+    /// - parameter ciContext: The ``CIContext`` to use. If this method is called frequently, you should reuse this ``CIContext``.
+    public func getFocusValueForCreatingMask(
+        relativeFocusLocation: CGPoint?,
+        grayscaleImage: CIImage?,
+        ciContext: CIContext? = CIContext()
+    ) -> CGFloat {
+        guard let focusPoint = relativeFocusLocation else {
+            LibLogger.depthMap.error("error on getFocusValueForCreatingMask, portraitFocusRelativePoint empty")
+            return .nan
+        }
+        
+        guard let normalizedGrayscaleImage = grayscaleImage,
+              let normalizedGrayscaleImageBuffer = normalizedGrayscaleImage.getOrCreateCVPixelBuffer(ciContext: ciContext) else {
+            LibLogger.depthMap.error("error on getFocusValueForCreatingMask, nil pixelBuffer")
+            return .nan
+        }
+        
+        let width = normalizedGrayscaleImage.extent.width
+        let height = normalizedGrayscaleImage.extent.height
+        
+        let xPosition = Int(width * focusPoint.x)
+        let yPosition = Int(height * focusPoint.y)
+        
+        guard let pixelValue = DepthMapUtils.shared.getPixelValue(
+            from: normalizedGrayscaleImageBuffer,
+            atX: xPosition,
+            y: yPosition
+        ) else {
+            LibLogger.depthMap.error("error on getFocusValueForCreatingMask, getPixelValue nan")
+            return .nan
+        }
+        
+        return pixelValue.red
+    }
+    
     /// Get the pixel value of the buffer, given a x and y position.
     /// - parameter grayscaleBuffer: The ``CVPixelBuffer`` which should be one of the format of:
     ///  ``kCVPixelFormatType_32BGRA``

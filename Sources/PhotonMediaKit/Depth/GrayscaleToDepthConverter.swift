@@ -141,6 +141,7 @@ public class GrayscaleToDepthConverter {
         commandEncoder.dispatchThreadgroups(threadgroupsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
         commandEncoder.endEncoding()
         commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
         
         return outputPixelBuffer
     }

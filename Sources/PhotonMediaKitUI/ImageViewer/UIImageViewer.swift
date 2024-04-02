@@ -123,7 +123,6 @@ public class UIImageViewer<
         // Assuming gradientLayer is a CAGradientLayer added to self.view.layer
         gradientLayer.frame = self.view.bounds
         
-        // Define constraints for titleView
         if let titleView = titleViewController?.view {
             NSLayoutConstraint.activate([
                 titleView.topAnchor.constraint(equalTo: titleBarContainer.bottomAnchor),
@@ -133,7 +132,6 @@ public class UIImageViewer<
             ])
         }
         
-        // Define constraints for toolBarView
         if let toolBarView = toolBarViewController?.view {
             NSLayoutConstraint.activate([
                 toolBarView.topAnchor.constraint(equalTo: titleBarContainer.bottomAnchor),
@@ -143,7 +141,6 @@ public class UIImageViewer<
             ])
         }
         
-        // Set constraints for scrollView, if it shouldn't use auto-layout
         if let scrollView = getScrollView() {
             scrollView.translatesAutoresizingMaskIntoConstraints = false
             NSLayoutConstraint.activate([
@@ -361,6 +358,7 @@ public class UIImageViewer<
         return true
     }
     
+    // Get the ScrollView of this UIPageViewController
     private func getScrollView() -> UIScrollView? {
         return self.view.subviews.first { v in
             v is UIScrollView

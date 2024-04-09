@@ -57,6 +57,10 @@ public class DepthToGrayscaleConverter {
         }
     }
     
+    public func getPreparedInputFormatDescription() -> CMFormatDescription? {
+        return inputFormatDescription
+    }
+    
     public func getGrayscaleImage(depthDataMap: CVPixelBuffer) -> CIImage? {
         if !self.isPrepared {
             var depthFormatDescription: CMFormatDescription?

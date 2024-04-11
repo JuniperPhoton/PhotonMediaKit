@@ -13,6 +13,16 @@ import UniformTypeIdentifiers
 import UIKit
 #endif
 
+public struct EditedOutput {
+    public let file: URL
+    public let data: PHAdjustmentData
+    
+    public init(file: URL, data: PHAdjustmentData) {
+        self.file = file
+        self.data = data
+    }
+}
+
 public class MediaAssetWriter {
     struct AccessError: Error {
         // empty
@@ -197,12 +207,14 @@ public class MediaAssetWriter {
     
     /// Save the media file to photo library and return the localIdentifier if succeeded.
     /// - parameter processedURL: The main photo image for this asset
+    /// - parameter editedOutput: The edited version of it.
     /// - parameter rawURL: The backed RAW file if presented
     /// - parameter collection: The ``PHAssetCollection`` to be added into
     /// - parameter location: The ``CLLocation`` of this photo asset
     /// - parameter deleteOnComplete: Whether deleting the files or not after complete(success or fail)
     public func saveMediaFileToPhotoLibrary(
         processedURL: URL,
+        editedOutput: EditedOutput? = nil,
         rawURL: URL? = nil,
         collection: PHAssetCollection? = nil,
         location: CLLocation?,
@@ -236,6 +248,19 @@ public class MediaAssetWriter {
                 }
                 
                 placeholder = creationRequest.placeholderForCreatedAsset
+                
+                if let placeholder = placeholder, let editedOutput = editedOutput {
+                    let editOutput = PHContentEditingOutput(placeholderForCreatedAsset: placeholder)
+                    editOutput.adjustmentData = editedOutput.data
+                    let renderURL = editOutput.renderedContentURL
+                    
+                    do {
+                        try FileManager.default.copyItem(at: editedOutput.file, to: renderURL)
+                        creationRequest.contentEditingOutput = editOutput
+                    } catch {
+                        LibLogger.libDefault.error("error on copying edited output file to render url \(renderURL)")
+                    }
+                }
                 
                 collection?.addAsset(creation: creationRequest)
             } completionHandler: { success, error in
@@ -293,6 +318,11 @@ public class MediaAssetWriter {
     }
     
     /// Edit the ``PHAsset`` and provide the edited version of it.
+    ///
+    /// Note that on iOS 16, this will show a prompt to let the user allow the modification. To avoid this issue
+    /// when saving new photo using PhotoKit, you should use ``saveMediaFileToPhotoLibrary(processedURL:editedOutput:rawURL:collection:location:deleteOnComplete:)``
+    /// with ``editedOutput`` parameter provided.
+    ///
     /// - parameter asset: The asset to be edited.
     /// - parameter editedFileURL: The JPEG file URL for the edited version of it. Note that this MUST be JPEG.
     /// - parameter data: The ``PHAdjustmentData`` describing the changes.

@@ -271,7 +271,12 @@ public class MediaAssetWriter {
                         if let rawURL = rawURL {
                             try FileManager.default.removeItem(at: rawURL.absoluteURL)
                         }
+                        
                         try FileManager.default.removeItem(at: processedURL.absoluteURL)
+                        
+                        if let edited = editedOutput?.file {
+                            try FileManager.default.removeItem(at: edited)
+                        }
                     } catch {
                         // ignored
                     }

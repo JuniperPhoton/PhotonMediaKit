@@ -52,14 +52,20 @@ public struct GainMapInfo {
     public let data: Data
     
     /// Convenient way to create the ``CIImage`` of this gain map.
-    public func toCIImage() -> CIImage? {
-        return CIImage(
+    public func toCIImage(applyOrientation: Bool = false) -> CIImage? {
+        let image = CIImage(
             bitmapData: data,
             bytesPerRow: bytesPerRow,
             size: CGSize(width: width, height: height),
             format: .L8,
             colorSpace: nil
         )
+        
+        if applyOrientation {
+            return image.oriented(orientation)
+        } else {
+            return image
+        }
     }
 }
 

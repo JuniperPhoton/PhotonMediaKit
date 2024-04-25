@@ -254,7 +254,7 @@ public actor MediaAssetLoader {
     }
     
     public func fetchProperties(phAsset: PHAsset) async -> Dictionary<String, Any>? {
-        let (data, orientation) = await fetchFullData(phAsset: phAsset, version: .current, allowFromNetwork: false, onProgressChanged: { _ in })
+        let (data, _) = await fetchFullData(phAsset: phAsset, version: .current, allowFromNetwork: false, onProgressChanged: { _ in })
         if let data = data {
             return await CGImageIO.shared.getProperties(data: data)
         } else {

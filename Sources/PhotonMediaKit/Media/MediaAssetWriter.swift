@@ -80,6 +80,7 @@ public class MediaAssetWriter {
     }
     
 #if os(iOS)
+    @discardableResult
     public func saveImageToAlbum(
         uiImage: UIImage,
         collection: PHAssetCollection? = nil
@@ -105,6 +106,7 @@ public class MediaAssetWriter {
     /// - parameter collection: The ``PHAssetCollection`` to be added into
     /// - parameter location: The ``CLLocation`` of this photo asset
     /// - parameter deleteOnComplete: Whether deleting the files or not after complete(success or fail)
+    @discardableResult
     public func saveMediaFileToPhotoLibrary(
         rawURL: URL,
         processedURL: URL? = nil,
@@ -127,6 +129,7 @@ public class MediaAssetWriter {
     /// - parameter collection: The ``PHAssetCollection`` to be added into
     /// - parameter location: The ``CLLocation`` of this photo asset
     /// - parameter deleteOnComplete: Whether deleting the files or not after complete(success or fail)
+    @discardableResult
     public func saveMediaFileToPhotoLibrary(
         rawURL: URL,
         processedURL: URL? = nil,
@@ -185,6 +188,7 @@ public class MediaAssetWriter {
     /// - parameter collection: The ``PHAssetCollection`` to be added into
     /// - parameter location: The ``CLLocation`` of this photo asset
     /// - parameter deleteOnComplete: Whether deleting the files or not after complete(success or fail)
+    @discardableResult
     public func saveMediaFileToAlbum(
         processedURL: URL,
         rawURL: URL? = nil,
@@ -208,6 +212,7 @@ public class MediaAssetWriter {
     /// - parameter collection: The ``PHAssetCollection`` to be added into
     /// - parameter location: The ``CLLocation`` of this photo asset
     /// - parameter deleteOnComplete: Whether deleting the files or not after complete(success or fail)
+    @discardableResult
     public func saveMediaFileToPhotoLibrary(
         processedURL: URL,
         editedOutput: EditedOutput? = nil,
@@ -279,6 +284,7 @@ public class MediaAssetWriter {
         }
     }
     
+    @discardableResult
     public func saveMediaFileToAlbum(
         file: URL,
         collection: PHAssetCollection? = nil,
@@ -305,6 +311,20 @@ public class MediaAssetWriter {
                     try? FileManager.default.removeItem(at: file.absoluteURL)
                 }
                 
+                continuation.resume(returning: success)
+            }
+        }
+    }
+    
+    @discardableResult
+    public func addMediaAssetToAlbum(
+        asset: PHAsset,
+        collection: PHAssetCollection
+    ) async -> Bool {
+        return await withCheckedContinuation { continuation in
+            PHPhotoLibrary.shared().performChanges {
+                collection.addAsset(asset: asset)
+            } completionHandler: { success, error in
                 continuation.resume(returning: success)
             }
         }
@@ -451,6 +471,17 @@ fileprivate extension PHAssetCollection {
         }
         
         request.addAssets([placeholder] as NSArray)
+        
+        return true
+    }
+    
+    @discardableResult
+    func addAsset(asset: PHAsset) -> Bool {
+        guard let request = PHAssetCollectionChangeRequest(for: self) else {
+            return false
+        }
+        
+        request.addAssets([asset] as NSArray)
         
         return true
     }

@@ -168,14 +168,10 @@ public class MediaAssetWriter {
                 print("save media result: \(success) error: \(String(describing: error))")
                 
                 if deleteOnComplete {
-                    do {
-                        if let processedURL = processedURL {
-                            try FileManager.default.removeItem(at: processedURL.absoluteURL)
-                        }
-                        try FileManager.default.removeItem(at: rawURL.absoluteURL)
-                    } catch {
-                        // ignored
+                    if let processedURL = processedURL {
+                        try? FileManager.default.removeItem(at: processedURL.absoluteURL)
                     }
+                    try? FileManager.default.removeItem(at: rawURL.absoluteURL)
                 }
                 
                 continuation.resume(returning: placeholder?.localIdentifier)
@@ -267,18 +263,14 @@ public class MediaAssetWriter {
                 LibLogger.libDefault.log("save media result: \(success) error: \(String(describing: error))")
                 
                 if deleteOnComplete {
-                    do {
-                        if let rawURL = rawURL {
-                            try FileManager.default.removeItem(at: rawURL.absoluteURL)
-                        }
-                        
-                        try FileManager.default.removeItem(at: processedURL.absoluteURL)
-                        
-                        if let edited = editedOutput?.file {
-                            try FileManager.default.removeItem(at: edited)
-                        }
-                    } catch {
-                        // ignored
+                    if let rawURL = rawURL {
+                        try? FileManager.default.removeItem(at: rawURL.absoluteURL)
+                    }
+                    
+                    try? FileManager.default.removeItem(at: processedURL.absoluteURL)
+                    
+                    if let edited = editedOutput?.file {
+                        try? FileManager.default.removeItem(at: edited)
                     }
                 }
                 
@@ -310,11 +302,7 @@ public class MediaAssetWriter {
                 LibLogger.libDefault.log("save media result: \(success) error: \(String(describing: error)), deleteOnComplete: \(deleteOnComplete)")
                 
                 if deleteOnComplete {
-                    do {
-                        try FileManager.default.removeItem(at: file.absoluteURL)
-                    } catch {
-                        print("error on delete \(file.absoluteURL), \(error)")
-                    }
+                    try? FileManager.default.removeItem(at: file.absoluteURL)
                 }
                 
                 continuation.resume(returning: success)

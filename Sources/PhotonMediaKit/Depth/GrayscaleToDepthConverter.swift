@@ -134,11 +134,11 @@ public class GrayscaleToDepthConverter {
         // Set up the thread groups.
         let width = computePipelineState!.threadExecutionWidth
         let height = computePipelineState!.maxTotalThreadsPerThreadgroup / width
-        let threadsPerThreadgroup = MTLSizeMake(width, height, 1)
-        let threadgroupsPerGrid = MTLSize(width: (inputTexture.width + width - 1) / width,
+        let threadsPerThreadGroup = MTLSizeMake(width, height, 1)
+        let threadGroupsPerGrid = MTLSize(width: (inputTexture.width + width - 1) / width,
                                           height: (inputTexture.height + height - 1) / height,
                                           depth: 1)
-        commandEncoder.dispatchThreadgroups(threadgroupsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
+        commandEncoder.dispatchThreadgroups(threadGroupsPerGrid, threadsPerThreadgroup: threadsPerThreadGroup)
         commandEncoder.endEncoding()
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()

@@ -63,10 +63,10 @@ public struct MediaAssetRes {
             return ""
         }
         
-        return converByteToHumanReadable(sizeOnDisk)
+        return convertByteToHumanReadable(sizeOnDisk)
     }
     
-    private func converByteToHumanReadable(_ bytes:Int64) -> String {
+    private func convertByteToHumanReadable(_ bytes:Int64) -> String {
         return byteFormatter.string(fromByteCount: Int64(bytes))
     }
 }

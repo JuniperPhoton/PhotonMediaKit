@@ -17,7 +17,7 @@ import UIKit
 import AppKit
 #endif
 
-public struct PHFetchTracableResult {
+public struct PHFetchTraceableResult {
     public let result: PHFetchResult<PHAsset>?
     public var assetRes: [MediaAssetRes]
     
@@ -296,7 +296,7 @@ public actor MediaAssetLoader {
         filterOptions: MediaFilterOptions,
         sortOption: FetchSortOption = .creationDate(ascending: false),
         configure: ((PHFetchOptions) -> Void)? = nil
-    ) async -> PHFetchTracableResult? {
+    ) async -> PHFetchTraceableResult? {
         let fromDate = dateRange.lowerBound
         let toDate = dateRange.upperBound
         
@@ -356,7 +356,7 @@ public actor MediaAssetLoader {
         
         LibLogger.mediaLoader.log("end enumerateObjects all videos \(rawVideos.count)")
         
-        return PHFetchTracableResult(allVideos, rawVideos)
+        return PHFetchTraceableResult(allVideos, rawVideos)
     }
     
     @available(iOS 15.0, macOS 12.0, *)
@@ -379,7 +379,7 @@ public actor MediaAssetLoader {
         sortOption: FetchSortOption = .creationDate(ascending: false),
         favoritedOptions: FavoritedFilterOptions = .all,
         configure: ((PHFetchOptions) -> Void)? = nil
-    ) async -> PHFetchTracableResult? {
+    ) async -> PHFetchTraceableResult? {
         let fromDate = dateRange.lowerBound
         let toDate = dateRange.upperBound
         
@@ -425,7 +425,7 @@ public actor MediaAssetLoader {
         
         LibLogger.mediaLoader.log("end enumerateObjects all photos \(rawImages.count)")
         
-        return PHFetchTracableResult(allPhotos, rawImages)
+        return PHFetchTraceableResult(allPhotos, rawImages)
     }
     
     @available(iOS 15.0, macOS 12.0, *)
@@ -434,7 +434,7 @@ public actor MediaAssetLoader {
         loadAssetResourcesInPlace: Bool,
         favoritedOptions: FavoritedFilterOptions = .all,
         configure: ((PHFetchOptions) -> Void)? = nil
-    ) async -> PHFetchTracableResult? {
+    ) async -> PHFetchTraceableResult? {
         let options = PHFetchOptions()
         
         LibLogger.mediaLoader.log("begin fetch raw collections from \(dateRange)")

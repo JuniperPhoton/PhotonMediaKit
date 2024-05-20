@@ -238,6 +238,7 @@ public class DepthMapUtils {
         
         let format = CVPixelBufferGetPixelFormatType(grayscaleBuffer)
         if !supportedFormats.contains(format) {
+            print("unknown pixel format when getting pixel value")
             return nil
         }
         

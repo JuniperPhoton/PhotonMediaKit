@@ -279,6 +279,10 @@ public class MediaAssetWriter {
                         try? FileManager.default.removeItem(at: rawURL.absoluteURL)
                     }
                     
+                    if let livePhotoMovieURL = livePhotoMovieURL {
+                        try? FileManager.default.removeItem(at: livePhotoMovieURL.absoluteURL)
+                    }
+                    
                     try? FileManager.default.removeItem(at: processedURL.absoluteURL)
                     
                     if let edited = editedOutput?.file {

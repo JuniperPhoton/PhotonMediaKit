@@ -217,6 +217,7 @@ public class MediaAssetWriter {
         processedURL: URL,
         editedOutput: EditedOutput? = nil,
         rawURL: URL? = nil,
+        livePhotoMovieURL: URL? = nil,
         collection: PHAssetCollection? = nil,
         location: CLLocation?,
         deleteOnComplete: Bool
@@ -246,6 +247,12 @@ public class MediaAssetWriter {
                         fileURL: rawURL,
                         options: options
                     )
+                }
+                
+                if let livePhotoMovieURL = livePhotoMovieURL {
+                    let options = PHAssetResourceCreationOptions()
+                    options.shouldMoveFile = true
+                    creationRequest.addResource(with: .pairedVideo, fileURL: livePhotoMovieURL, options: options)
                 }
                 
                 placeholder = creationRequest.placeholderForCreatedAsset

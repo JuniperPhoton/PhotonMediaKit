@@ -63,19 +63,22 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         scrollView.imageContentMode = .aspectFit
         scrollView.initialOffset = .center
         
-        // We use the traditional frame method to layout the scrollView
-        // Since it's resizing is based on the frame.
-        scrollView.frame = self.view.bounds
-        
-        showLoadingView()
-        self.view.addSubview(scrollView)
-
-        currentViewSize = self.view.frame.size
-        
-        if startFrame != .zero {
-            loadImageForTransition()
-        } else {
-            loadFullImage()
+        // In stage manager, the view's bounds won't be updated until next render cycle.
+        DispatchQueue.main.async { [self] in
+            // We use the traditional frame method to layout the scrollView
+            // Since it's resizing is based on the frame.
+            scrollView.frame = self.view.bounds
+            
+            showLoadingView()
+            self.view.addSubview(scrollView)
+            
+            currentViewSize = self.view.frame.size
+            
+            if startFrame != .zero {
+                loadImageForTransition()
+            } else {
+                loadFullImage()
+            }
         }
     }
     

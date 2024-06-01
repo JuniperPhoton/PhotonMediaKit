@@ -93,8 +93,23 @@ class UIImageScrollView: UIScrollView {
 #endif
     }
     
-    func adjustFrameToCenter() {
+    private var lastSize: CGSize = .zero
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
         
+        let lastSize = self.lastSize
+        let current = self.bounds.size
+        
+        if lastSize != current {
+            reconfigureImageSize()
+            adjustFrameToCenter()
+        }
+        
+        self.lastSize = current
+    }
+    
+    func adjustFrameToCenter() {
         guard let unwrappedZoomView = zoomView else {
             return
         }
@@ -241,7 +256,7 @@ class UIImageScrollView: UIScrollView {
     }
     
     private func setMaxMinZoomScalesForCurrentBounds() {
-        // calculate min/max zoomscale
+        // calculate min/max zoom scale
         let xScale = bounds.width / imageSize.width    // the scale needed to perfectly fit the image width-wise
         let yScale = bounds.height / imageSize.height   // the scale needed to perfectly fit the image height-wise
         

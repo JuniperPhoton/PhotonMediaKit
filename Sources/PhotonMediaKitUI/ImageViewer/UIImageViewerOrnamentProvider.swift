@@ -13,6 +13,7 @@ import Photos
 public protocol UIImageViewerEditSourceProvider: AnyObject {
     func requestDelete(phAsset: PHAsset)
     func requestToggleFavorited(phAsset: PHAsset)
+    func requestDismiss()
 }
 
 /// Provide title bar implementation to ``UIImageViewer``.

@@ -38,8 +38,9 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     }()
     
     var asset: AssetProvider? = nil
-    var onZoomChanged: ((CGFloat) -> Void)? = nil
+    var onZoomChanged: ((ClosedRange<CGFloat>, CGFloat) -> Void)? = nil
     var onRequestDismiss: (() -> Void)? = nil
+    var onSingleTap: (() -> Bool)? = nil
     var startFrame: CGRect = .zero
     private(set) var useDynamicRange: Bool = false
     
@@ -68,7 +69,8 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             // We use the traditional frame method to layout the scrollView
             // Since it's resizing is based on the frame.
             scrollView.frame = self.view.bounds
-            
+            //scrollView.delegate = self
+
             showLoadingView()
             self.view.addSubview(scrollView)
             
@@ -87,7 +89,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         if loadingView.superview != nil {
             return
         }
-                
+        
         let superBounds = self.view.bounds
         let loadingViewBounds = loadingView.bounds
         
@@ -116,7 +118,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         self.scrollView.frame = CGRect(x: 0, y: 0, width: size.width, height: size.height)
     }
     
-    func reset() {
+    func resetZoomScale() {
         self.scrollView.zoomScale = self.scrollView.minimumZoomScale
     }
     
@@ -407,11 +409,17 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     }
     
     func onSingleTap(imageScrollView: UIImageScrollView) -> Bool {
-        return false
+        return onSingleTap?() ?? false
     }
     
     func onDoubleTap(imageScrollView: UIImageScrollView) -> Bool {
         return false
+    }
+    
+    func scrollViewDidZoom(_ scrollView: UIScrollView) {
+        DispatchQueue.main.async {
+            self.onZoomChanged?(scrollView.minimumZoomScale...scrollView.maximumZoomScale, scrollView.zoomScale)
+        }
     }
 }
 #endif

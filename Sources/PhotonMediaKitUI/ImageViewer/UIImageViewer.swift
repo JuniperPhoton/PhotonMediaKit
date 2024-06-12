@@ -210,6 +210,7 @@ public class UIImageViewer<
         parent?.view.backgroundColor = UIColor.clear
     }
     
+    // MARK: UIGestureRecognizerDelegate
     public func gestureRecognizerShouldBegin(_ current: UIGestureRecognizer) -> Bool {
         guard let currentPan = current as? UIPanGestureRecognizer else {
             return false
@@ -217,6 +218,15 @@ public class UIImageViewer<
         
         let velocity = currentPan.velocity(in: currentPan.view)
         return velocity.y >= 160
+    }
+    
+    private func toggleOrnamentVisibility(hide: Bool) {
+        let targetAlpha = hide ? 0.0 : 1.0
+        
+        UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseOut) {
+            self.titleBarContainer.alpha = targetAlpha
+            self.toolBarContainer.alpha = targetAlpha
+        }
     }
     
     @objc
@@ -259,6 +269,21 @@ public class UIImageViewer<
     }
     
     // MARK: UIImageViewerEditSourceProvider
+    public func requestDismiss() {
+        guard let currentViewController = currentViewController else {
+            return
+        }
+        guard let scrollView = getScrollView() else {
+            return
+        }
+        
+        currentViewController.resetZoomScale()
+        
+        if !animateToDismissToStartFrame(targetView: scrollView, currentViewController: currentViewController) {
+            animateToDismiss(targetView: scrollView)
+        }
+    }
+    
     public func requestDelete(phAsset: PHAsset) {
         Task { @MainActor in
             if await MediaAssetWriter.shared.delete(asset: phAsset) {
@@ -373,6 +398,15 @@ public class UIImageViewer<
             guard let self = self else { return }
             self.requestDismiss(animated: true)
         }
+        controller.onZoomChanged = { [weak self] range, zoomFactor in
+            guard let self = self else { return }
+            self.toggleOrnamentVisibility(hide: (zoomFactor - range.lowerBound) > 0.0001)
+        }
+        controller.onSingleTap = { [weak self] in
+            guard let self = self else { return false }
+            self.toggleOrnamentVisibility(hide: self.titleBarContainer.alpha == 1.0)
+            return true
+        }
         return controller
     }
     
@@ -424,7 +458,7 @@ public class UIImageViewer<
         guard let previous = previousViewControllers.first as? UIImageDetailViewController<AssetProvider> else {
             return
         }
-        previous.reset()
+        previous.resetZoomScale()
         updateOrnamentUI()
     }
     

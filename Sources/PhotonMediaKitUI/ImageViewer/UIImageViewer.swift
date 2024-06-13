@@ -63,6 +63,8 @@ public class UIImageViewer<
         return UIView()
     }()
     
+    private var showOrnamentUI = true
+    
     func setImages(_ images: [AssetProvider]) {
         self.images.removeAll()
         for image in images {
@@ -400,11 +402,17 @@ public class UIImageViewer<
         }
         controller.onZoomChanged = { [weak self] range, zoomFactor in
             guard let self = self else { return }
-            self.toggleOrnamentVisibility(hide: (zoomFactor - range.lowerBound) > 0.0001)
+            let hide = (zoomFactor - range.lowerBound) > 0.0001
+            if hide {
+                self.toggleOrnamentVisibility(hide: hide)
+            } else if showOrnamentUI {
+                self.toggleOrnamentVisibility(hide: false)
+            }
         }
         controller.onSingleTap = { [weak self] in
             guard let self = self else { return false }
-            self.toggleOrnamentVisibility(hide: self.titleBarContainer.alpha == 1.0)
+            showOrnamentUI.toggle()
+            self.toggleOrnamentVisibility(hide: !showOrnamentUI)
             return true
         }
         return controller

@@ -456,7 +456,6 @@ public class UIImageViewer<
            let nextIndex = images.firstIndex(of: nextAsset) {
             syncer.currentIndex = nextIndex
         }
-        next.loadImageProgressively()
     }
     
     public func pageViewController(_ pageViewController: UIPageViewController,

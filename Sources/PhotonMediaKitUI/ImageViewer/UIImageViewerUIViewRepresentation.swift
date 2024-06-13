@@ -23,6 +23,7 @@ public struct UIImageViewerUIViewRepresentation<AssetProvider: MediaAssetProvide
     private let animateTransitToStartLocation: Bool
     private let animateDismissToStartLocation: Bool
     private let animateBackgroundOnViewLoaded: Bool
+    private let prefersHighDynamicRange: Bool
     private let onRequestDismiss: ((Bool) -> Void)
     
     public init(
@@ -32,6 +33,7 @@ public struct UIImageViewerUIViewRepresentation<AssetProvider: MediaAssetProvide
         animateTransitToStartLocation: Bool,
         animateDismissToStartLocation: Bool,
         animateBackgroundOnViewLoaded: Bool,
+        prefersHighDynamicRange: Bool,
         onRequestDismiss: @escaping ((Bool) -> Void)
     ) {
         self.images = images
@@ -41,6 +43,7 @@ public struct UIImageViewerUIViewRepresentation<AssetProvider: MediaAssetProvide
         self.animateDismissToStartLocation = animateDismissToStartLocation
         self.animateBackgroundOnViewLoaded = animateBackgroundOnViewLoaded
         self.onRequestDismiss = onRequestDismiss
+        self.prefersHighDynamicRange = prefersHighDynamicRange
     }
     
     public func updateUIViewController(
@@ -59,6 +62,7 @@ public struct UIImageViewerUIViewRepresentation<AssetProvider: MediaAssetProvide
         controller.onRequestDismiss = onRequestDismiss
         controller.ornamentProvider = ornamentProvider
         controller.syncer = self.syncer
+        controller.prefersHighDynamicRange = prefersHighDynamicRange
         controller.animateTransitToStartLocation = self.animateTransitToStartLocation
         controller.animateDismissToStartLocation = self.animateDismissToStartLocation
         controller.animateBackgroundOnViewLoaded = self.animateBackgroundOnViewLoaded

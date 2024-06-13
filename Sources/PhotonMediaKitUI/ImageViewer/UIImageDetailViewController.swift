@@ -42,7 +42,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     var onRequestDismiss: (() -> Void)? = nil
     var onSingleTap: (() -> Bool)? = nil
     var startFrame: CGRect = .zero
-    private(set) var useDynamicRange: Bool = false
+    private(set) var prefersHighDynamicRange: Bool = false
     
     private var loadTask: Task<(), Never>? = nil
     private var currentViewSize: CGSize = .zero
@@ -52,8 +52,8 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         self.asset = asset
     }
     
-    func setUseDynamicRange(_ useDynamicRange: Bool) {
-        self.useDynamicRange = useDynamicRange
+    func setprefersHighDynamicRange(_ prefersHighDynamicRange: Bool) {
+        self.prefersHighDynamicRange = prefersHighDynamicRange
     }
     
     override func viewDidLoad() {
@@ -135,7 +135,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
                 phAsset: asset.phAssetRes.phAsset,
                 option: .size(w: currentViewSize.width, h: currentViewSize.height),
                 version: .current,
-                useDynamicRange: false
+                prefersHighDynamicRange: false
             ) else {
                 return
             }
@@ -235,7 +235,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             phAsset: assetRes.phAssetRes.phAsset,
             option: .full,
             version: version,
-            useDynamicRange: useDynamicRange
+            prefersHighDynamicRange: prefersHighDynamicRange
         )
     }
     
@@ -249,7 +249,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             phAsset: assetRes.phAssetRes.phAsset,
             option: option,
             version: version,
-            useDynamicRange: useDynamicRange
+            prefersHighDynamicRange: prefersHighDynamicRange
         ) else {
             return
         }

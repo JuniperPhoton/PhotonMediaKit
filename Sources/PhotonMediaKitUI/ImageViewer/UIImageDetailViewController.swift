@@ -10,11 +10,12 @@ import AVFoundation
 import AVKit
 import Photos
 import PhotonMediaKit
+import PhotosUI
 
 #if canImport(UIKit)
 import UIKit
 
-class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewController, ImageScrollViewDelegate {
+class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewController, ImageScrollViewDelegate, PHLivePhotoViewDelegate {
     private lazy var scrollView: UIImageScrollView = {
         let view = UIImageScrollView()
         view.imageScrollViewDelegate = self
@@ -37,6 +38,11 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         return button
     }()
     
+    private lazy var livePhotoView: PHLivePhotoView = {
+        let view = PHLivePhotoView()
+        return view
+    }()
+    
     var asset: AssetProvider? = nil
     var onZoomChanged: ((ClosedRange<CGFloat>, CGFloat) -> Void)? = nil
     var onRequestDismiss: (() -> Void)? = nil
@@ -47,6 +53,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     private var loadTask: Task<(), Never>? = nil
     private var currentViewSize: CGSize = .zero
     private var originalScale: CGFloat = 1.0
+    private var requestId: PHImageRequestID? = nil
     
     func setImage(_ asset: AssetProvider) {
         self.asset = asset
@@ -70,7 +77,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             // Since it's resizing is based on the frame.
             scrollView.frame = self.view.bounds
             //scrollView.delegate = self
-
+            
             showLoadingView()
             self.view.addSubview(scrollView)
             
@@ -81,6 +88,103 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             } else {
                 loadFullImage()
             }
+        }
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        tryShowLivePhotoView()
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        cancelLoadingImage()
+        hideLivePhotoView()
+    }
+    
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        currentViewSize = size
+        
+        // We use the traditional frame method to layout the scrollView
+        // Since it's resizing is based on the frame. We update its frame on the new size
+        // Note that at this point, self.view's bounds is not updated yet.
+        self.scrollView.frame = CGRect(x: 0, y: 0, width: size.width, height: size.height)
+        
+        if livePhotoView.superview != nil {
+            layoutLivePhotoView()
+        }
+    }
+    
+    private func tryShowLivePhotoView() {
+        guard let asset = asset?.phAssetRes.phAsset else {
+            return
+        }
+        
+        if self.scrollView.superview == nil {
+            return
+        }
+        
+        if asset.isLivePhotoSubType() {
+            let options = PHLivePhotoRequestOptions()
+            options.version = .current
+            options.deliveryMode = .highQualityFormat
+            options.isNetworkAccessAllowed = false
+            
+            print("asset size \(asset.pixelSize)")
+            
+            let assetSize = asset.pixelSize
+            let fitRect = self.view.bounds.largestAspectFitRect(of: assetSize)
+            
+            requestId = PHImageManager.default().requestLivePhoto(
+                for: asset,
+                targetSize: fitRect.size,
+                contentMode: .aspectFit,
+                options: options
+            ) { [weak self] photo, dic in
+                guard let self = self else { return }
+                if let photo = photo {
+                    showLivePhotoView(photo: photo)
+                }
+            }
+        }
+    }
+    
+    private func showLivePhotoView(photo: PHLivePhoto) {
+        let livePhotoView = livePhotoView
+        if livePhotoView.superview != nil {
+            return
+        }
+        
+        livePhotoView.livePhoto = photo
+        livePhotoView.translatesAutoresizingMaskIntoConstraints = false
+        livePhotoView.delegate = self
+        livePhotoView.isMuted = true
+        
+        layoutLivePhotoView()
+        
+        self.view.addSubview(livePhotoView)
+        livePhotoView.startPlayback(with: .hint)
+    }
+    
+    private func layoutLivePhotoView() {
+        guard let livePhoto = livePhotoView.livePhoto else {
+            return
+        }
+        
+        let size = livePhoto.size
+        let fitRect = self.view.bounds.largestAspectFitRect(of: size)
+        
+        livePhotoView.frame = fitRect
+    }
+    
+    private func hideLivePhotoView() {
+        let livePhotoView = livePhotoView
+        if livePhotoView.superview != nil {
+            livePhotoView.stopPlayback()
+            livePhotoView.removeFromSuperview()
+        }
+        if let id = requestId {
+            PHImageManager.default().cancelImageRequest(id)
         }
     }
     
@@ -102,20 +206,6 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         let x = superBounds.width / 2 - loadingViewBounds.width / 2
         let y = superBounds.height / 2 - loadingViewBounds.height / 2
         loadingView.frame = CGRect(x: x, y: y, width: loadingView.bounds.width, height: loadingView.bounds.height)
-    }
-    
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        cancelLoadingImage()
-    }
-    
-    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
-        currentViewSize = size
-        
-        // We use the traditional frame method to layout the scrollView
-        // Since it's resizing is based on the frame. We update its frame on the new size
-        // Note that at this point, self.view's bounds is not updated yet.
-        self.scrollView.frame = CGRect(x: 0, y: 0, width: size.width, height: size.height)
     }
     
     func resetZoomScale() {
@@ -217,6 +307,10 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         loadTask?.cancel()
         loadTask = nil
         setupAVViewControllerTask?.cancel()
+        
+        if let requestId = requestId {
+            PHImageManager.default().cancelImageRequest(requestId)
+        }
     }
     
     /// Get a frame where image will be positioned when its in the minimum zoom scale, which is also the same frame when the user first
@@ -345,6 +439,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         scrollView.display(image: fullSizeImage)
         scrollView.isUserInteractionEnabled = enableZoom
         loadingView.removeFromSuperview()
+        tryShowLivePhotoView()
     }
     
     private func displayImageForTransition(uiImage: UIImage, enableZoom: Bool) async {
@@ -420,6 +515,21 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         DispatchQueue.main.async {
             self.onZoomChanged?(scrollView.minimumZoomScale...scrollView.maximumZoomScale, scrollView.zoomScale)
         }
+    }
+    
+    // MARK: PHLivePhotoViewDelegate
+    func livePhotoView(_ livePhotoView: PHLivePhotoView, canBeginPlaybackWith playbackStyle: PHLivePhotoViewPlaybackStyle) -> Bool {
+        LibLogger.libDefault.log("livePhotoView canBeginPlaybackWith")
+        return true
+    }
+    
+    func livePhotoView(_ livePhotoView: PHLivePhotoView, willBeginPlaybackWith playbackStyle: PHLivePhotoViewPlaybackStyle) {
+        LibLogger.libDefault.log("livePhotoView willBeginPlaybackWith")
+    }
+    
+    func livePhotoView(_ livePhotoView: PHLivePhotoView, didEndPlaybackWith playbackStyle: PHLivePhotoViewPlaybackStyle) {
+        LibLogger.libDefault.log("livePhotoView didEndPlaybackWith")
+        hideLivePhotoView()
     }
 }
 #endif

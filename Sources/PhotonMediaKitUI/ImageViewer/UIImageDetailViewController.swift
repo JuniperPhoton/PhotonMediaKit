@@ -52,7 +52,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         self.asset = asset
     }
     
-    func setprefersHighDynamicRange(_ prefersHighDynamicRange: Bool) {
+    func setPrefersHighDynamicRange(_ prefersHighDynamicRange: Bool) {
         self.prefersHighDynamicRange = prefersHighDynamicRange
     }
     

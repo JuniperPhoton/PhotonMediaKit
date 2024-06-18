@@ -251,7 +251,7 @@ public class MediaAssetWriter {
                 
                 if let livePhotoMovieURL = livePhotoMovieURL {
                     let options = PHAssetResourceCreationOptions()
-                    options.shouldMoveFile = true
+                    options.shouldMoveFile = deleteOnComplete
                     creationRequest.addResource(with: .pairedVideo, fileURL: livePhotoMovieURL, options: options)
                 }
                 

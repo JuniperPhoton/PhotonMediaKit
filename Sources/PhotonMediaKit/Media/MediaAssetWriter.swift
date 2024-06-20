@@ -353,13 +353,13 @@ public class MediaAssetWriter {
     /// processed in ``PHLivePhotoFrameProcessingBlock``.
     ///
     /// - parameter data: The ``PHAdjustmentData`` describing the changes.
-    /// - parameter livePhotoFrameProcessor: The ``PHLivePhotoFrameProcessingBlock`` to process the full-size still image and video frame.
+    ///
+    /// To provideEditedVersion for LivePhoto, use ``provideEditedVersionForLivePhoto(asset:livePhotoFrameProcessor:data:deleteOnComplete:)``.
     public func provideEditedVersion(
         asset: PHAsset,
-        editedFileURL: URL?,
+        editedFileURL: URL,
         data: PHAdjustmentData,
-        deleteOnComplete: Bool,
-        livePhotoFrameProcessor: PHLivePhotoFrameProcessingBlock? = nil
+        deleteOnComplete: Bool
     ) async -> Bool {
         return await withCheckedContinuation { continuation in
             asset.requestContentEditingInput(with: nil) { input, _ in
@@ -372,7 +372,60 @@ public class MediaAssetWriter {
                 output.adjustmentData = data
                 
                 do {
-                    let performChanges = {
+                    // For iOS 17.0, we can use renderedContentURL(for type: UTType) to use other UTType other than JPEG.
+                    // But for now we don't support this yet.
+                    let renderURL = output.renderedContentURL
+                    try FileManager.default.copyItem(at: editedFileURL, to: renderURL)
+                    
+                    PHPhotoLibrary.shared().performChanges {
+                        let changed = PHAssetChangeRequest(for: asset)
+                        changed.contentEditingOutput = output
+                    } completionHandler: { success, error in
+                        if !success {
+                            LibLogger.libDefault.error("failed to perform changed for PHAsset, error: \(error)")
+                        }
+                        
+                        if deleteOnComplete {
+                            try? FileManager.default.removeItem(at: editedFileURL)
+                        }
+                        continuation.resume(returning: success)
+                    }
+                } catch {
+                    continuation.resume(returning: false)
+                    LibLogger.libDefault.error("error copying item \(error)")
+                }
+            }
+        }
+    }
+    
+    /// Edit the ``PHAsset`` that's is a Live Photo and provide the edited version of it.
+    ///
+    /// - parameter asset: The asset to be edited.
+    /// - parameter data: The ``PHAdjustmentData`` describing the changes.
+    /// - parameter version: Which version to be loaded to edit.
+    /// - parameter livePhotoFrameProcessor: The block to process each frame of the Live Photo still image and video.
+    ///
+    /// NOTE: Editing the "current" version may not work if there is an edited version of it, which may due to the system issue.
+    public func provideEditedVersionForLivePhoto(
+        asset: PHAsset,
+        data: PHAdjustmentData,
+        version: MediaAssetVersion,
+        livePhotoFrameProcessor: @escaping PHLivePhotoFrameProcessingBlock
+    ) async -> Bool {
+        return await withCheckedContinuation { continuation in
+            asset.requestContentEditingInput(with: .create(version: version)) { input, _ in
+                guard let input = input, input.livePhoto != nil else {
+                    continuation.resume(returning: false)
+                    return
+                }
+                
+                if let context = PHLivePhotoEditingContext(livePhotoEditingInput: input) {
+                    context.frameProcessor = livePhotoFrameProcessor
+                    
+                    let output = PHContentEditingOutput(contentEditingInput: input)
+                    output.adjustmentData = data
+                    
+                    context.saveLivePhoto(to: output) { success, error in
                         PHPhotoLibrary.shared().performChanges {
                             let changed = PHAssetChangeRequest(for: asset)
                             changed.contentEditingOutput = output
@@ -380,36 +433,11 @@ public class MediaAssetWriter {
                             if !success {
                                 LibLogger.libDefault.error("failed to perform changed for PHAsset, error: \(error)")
                             }
-                            
-                            if deleteOnComplete, let editedFileURL = editedFileURL {
-                                try? FileManager.default.removeItem(at: editedFileURL)
-                            }
                             continuation.resume(returning: success)
                         }
                     }
-                    
-                    if input.livePhoto != nil,
-                       let livePhotoFrameProcessor = livePhotoFrameProcessor,
-                       let context = PHLivePhotoEditingContext(livePhotoEditingInput: input) {
-                        context.frameProcessor = livePhotoFrameProcessor
-                        context.saveLivePhoto(to: output) { success, error in
-                            performChanges()
-                        }
-                    } else if let editedFileURL = editedFileURL {
-                        // For iOS 17.0, we can use renderedContentURL(for type: UTType) to use other UTType other than JPEG.
-                        // But for now we don't support this yet.
-                        let renderURL = output.renderedContentURL
-                        try FileManager.default.copyItem(at: editedFileURL, to: renderURL)
-                        
-                        performChanges()
-                    }
-                } catch {
-                    if deleteOnComplete, let editedFileURL = editedFileURL {
-                        try? FileManager.default.removeItem(at: editedFileURL)
-                    }
-                    
+                } else {
                     continuation.resume(returning: false)
-                    LibLogger.libDefault.error("error copying item \(error)")
                 }
             }
         }
@@ -516,5 +544,34 @@ fileprivate extension PHAssetCollection {
         request.addAssets([asset] as NSArray)
         
         return true
+    }
+}
+
+extension PHContentEditingInputRequestOptions {
+    static func create(version: MediaAssetVersion) -> PHContentEditingInputRequestOptions {
+        switch version {
+        case .current:
+            return .createForEditedVersion()
+        case .original:
+            return .createForOriginalVersion()
+        }
+    }
+    
+    static func createForOriginalVersion() -> PHContentEditingInputRequestOptions {
+        let options = PHContentEditingInputRequestOptions()
+        options.canHandleAdjustmentData = { _ in
+            return true
+        }
+        options.isNetworkAccessAllowed = true
+        return options
+    }
+    
+    static func createForEditedVersion() -> PHContentEditingInputRequestOptions {
+        let options = PHContentEditingInputRequestOptions()
+        options.canHandleAdjustmentData = { _ in
+            return false
+        }
+        options.isNetworkAccessAllowed = true
+        return options
     }
 }

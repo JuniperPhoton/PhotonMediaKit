@@ -349,25 +349,30 @@ public class MediaAssetWriter {
     ///
     /// - parameter asset: The asset to be edited.
     /// - parameter editedFileURL: The JPEG file URL for the edited version of it. Note that this MUST be JPEG.
+    /// If it's editing LivePhoto with non nil ``PHLivePhotoFrameProcessingBlock``, this must be nil due to the reason that the still image is also
+    /// processed in ``PHLivePhotoFrameProcessingBlock``.
+    ///
     /// - parameter data: The ``PHAdjustmentData`` describing the changes.
+    /// - parameter livePhotoFrameProcessor: The ``PHLivePhotoFrameProcessingBlock`` to process the full-size still image and video frame.
     public func provideEditedVersion(
         asset: PHAsset,
-        editedFileURL: URL,
+        editedFileURL: URL?,
         data: PHAdjustmentData,
-        deleteOnComplete: Bool
+        deleteOnComplete: Bool,
+        livePhotoFrameProcessor: PHLivePhotoFrameProcessingBlock? = nil
     ) async -> Bool {
         return await withCheckedContinuation { continuation in
             asset.requestContentEditingInput(with: nil) { input, _ in
-                if let input = input {
-                    let output = PHContentEditingOutput(contentEditingInput: input)
-                    output.adjustmentData = data
-                    
-                    do {
-                        // For iOS 17.0, we can use renderedContentURL(for type: UTType) to use other UTType other than JPEG.
-                        // But for now we don't support this yet.
-                        let renderURL = output.renderedContentURL
-                        try FileManager.default.copyItem(at: editedFileURL, to: renderURL)
-                        
+                guard let input = input else {
+                    continuation.resume(returning: false)
+                    return
+                }
+                
+                let output = PHContentEditingOutput(contentEditingInput: input)
+                output.adjustmentData = data
+                
+                do {
+                    let performChanges = {
                         PHPhotoLibrary.shared().performChanges {
                             let changed = PHAssetChangeRequest(for: asset)
                             changed.contentEditingOutput = output
@@ -376,19 +381,35 @@ public class MediaAssetWriter {
                                 LibLogger.libDefault.error("failed to perform changed for PHAsset, error: \(error)")
                             }
                             
-                            if deleteOnComplete {
+                            if deleteOnComplete, let editedFileURL = editedFileURL {
                                 try? FileManager.default.removeItem(at: editedFileURL)
                             }
                             continuation.resume(returning: success)
                         }
-                    } catch {
-                        if deleteOnComplete {
-                            try? FileManager.default.removeItem(at: editedFileURL)
-                        }
-                        
-                        continuation.resume(returning: false)
-                        LibLogger.libDefault.error("error copying item \(error)")
                     }
+                    
+                    if input.livePhoto != nil,
+                       let livePhotoFrameProcessor = livePhotoFrameProcessor,
+                       let context = PHLivePhotoEditingContext(livePhotoEditingInput: input) {
+                        context.frameProcessor = livePhotoFrameProcessor
+                        context.saveLivePhoto(to: output) { success, error in
+                            performChanges()
+                        }
+                    } else if let editedFileURL = editedFileURL {
+                        // For iOS 17.0, we can use renderedContentURL(for type: UTType) to use other UTType other than JPEG.
+                        // But for now we don't support this yet.
+                        let renderURL = output.renderedContentURL
+                        try FileManager.default.copyItem(at: editedFileURL, to: renderURL)
+                        
+                        performChanges()
+                    }
+                } catch {
+                    if deleteOnComplete, let editedFileURL = editedFileURL {
+                        try? FileManager.default.removeItem(at: editedFileURL)
+                    }
+                    
+                    continuation.resume(returning: false)
+                    LibLogger.libDefault.error("error copying item \(error)")
                 }
             }
         }

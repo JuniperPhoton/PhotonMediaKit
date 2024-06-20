@@ -60,8 +60,115 @@ public actor MediaAssetLoader {
         }
     }
     
+    public struct FetchError: Error {
+        let message: String
+    }
+    
+    private struct FetchResult<T> {
+        let result: T?
+    }
+    
     public init() {
         // empty
+    }
+    
+    /// Fetch the first ``PHAssetResource`` which matches the order of ``orderedResTypes``.
+    ///
+    /// - parameter phAsset: The ``PHAsset`` that contains the ``PHAssetResource``.
+    /// - parameter orderedResTypes: The ordered ``PHAssetResourceType`` to match.
+    ///
+    /// For example, given a orderedResTypes of [PHAssetResourceType.photo, PHAssetResourceType.video],
+    /// if a ``PHAssetResource`` of ``PHAssetResourceType.photo`` exists, it will be returned,
+    /// otherwise it will continue to find a ``PHAssetResource`` of ``PHAssetResourceType.video``.
+    public func getFirstMatchedResType(
+        phAsset: PHAsset,
+        orderedResTypes: [PHAssetResourceType]
+    ) async -> PHAssetResource? {
+        var resultRes: PHAssetResource? = nil
+        
+        let allRes = PHAssetResource.assetResources(for: phAsset)
+        
+        for type in orderedResTypes {
+            resultRes = allRes.first { res in res.type == type}
+            if resultRes != nil {
+                break
+            }
+        }
+        
+        return resultRes
+    }
+    
+    /// Fetch the data of the Live Photo movie in a ``PHAsset`` and write the data into the file URL you provide.
+    public func fetchLivePhotoMovieURL(
+        phAsset: PHAsset,
+        version: MediaAssetVersion,
+        toFile: URL,
+        allowFromNetwork: Bool,
+        onProgressChanged: ((Double) -> Void)? = nil
+    ) async -> URL? {
+        guard let livePhotoRes = await getFirstMatchedResType(
+            phAsset: phAsset,
+            orderedResTypes: version.getPHLivePhotoRequestOptionsTypes()
+        ) else {
+            LibLogger.mediaLoader.error("failed to find live photo res")
+            return nil
+        }
+        
+        let manager = PHAssetResourceManager.default()
+        
+        let requestOptions = PHAssetResourceRequestOptions()
+        requestOptions.isNetworkAccessAllowed = allowFromNetwork
+        
+        if allowFromNetwork, let onProgressChanged = onProgressChanged {
+            requestOptions.progressHandler = { progress in
+                onProgressChanged(progress)
+            }
+        }
+        
+        do {
+            try await manager.writeData(for: livePhotoRes, toFile: toFile, options: requestOptions)
+            return toFile
+        } catch {
+            LibLogger.mediaLoader.error("error on writeData \(error)")
+            return nil
+        }
+    }
+    
+    /// Fetch the ``PHLivePhoto`` object of the ``PHAsset``.
+    public func fetchLivePhoto(
+        phAsset: PHAsset,
+        version: MediaAssetVersion,
+        allowFromNetwork: Bool,
+        onProgressChanged: ((Double) -> Void)? = nil
+    ) async -> PHLivePhoto? {
+        return await withCheckedContinuation { continuation in
+            let manager = PHImageManager()
+            
+            let o = PHLivePhotoRequestOptions()
+            o.isNetworkAccessAllowed = allowFromNetwork
+
+            if allowFromNetwork, let onProgressChanged = onProgressChanged {
+                o.progressHandler = { progress, error, obj, map in
+                    onProgressChanged(progress)
+                }
+            }
+            
+            o.version = version.getPHImageRequestOptionsVersion()
+            
+            LibLogger.mediaLoader.log("begin fetch PHLivePhoto for \(phAsset.localIdentifier)")
+            
+            let id = manager.requestLivePhoto(
+                for: phAsset,
+                targetSize: CGSize(width: phAsset.pixelWidth, height: phAsset.pixelHeight),
+                contentMode: .aspectFit,
+                options: o
+            ) { photo, _ in
+                continuation.resume(returning: photo)
+            }
+            if Task.isCancelled {
+                manager.cancelImageRequest(id)
+            }
+        }
     }
     
 #if canImport(UIKit)
@@ -192,7 +299,7 @@ public actor MediaAssetLoader {
         phAsset: PHAsset,
         version: MediaAssetVersion,
         allowFromNetwork: Bool,
-        onProgressChanged: @escaping (Double) -> Void
+        onProgressChanged: ((Double) -> Void)? = nil
     ) async -> (Data?, CGImagePropertyOrientation) {
         return await withCheckedContinuation { continuation in
             let manager = PHImageManager()
@@ -200,7 +307,7 @@ public actor MediaAssetLoader {
             let o = PHImageRequestOptions()
             o.isNetworkAccessAllowed = allowFromNetwork
             o.isSynchronous = true
-            if allowFromNetwork {
+            if allowFromNetwork, let onProgressChanged = onProgressChanged {
                 o.progressHandler = { progress, error, obj, map in
                     onProgressChanged(progress)
                 }
@@ -234,9 +341,9 @@ public actor MediaAssetLoader {
             o.isSynchronous = true
             o.resizeMode = .fast
             
-            if isNetworkAccessAllowed {
+            if isNetworkAccessAllowed, let onProgressChanged = onProgressChanged {
                 o.progressHandler = { progress, error, obj, map in
-                    onProgressChanged?(progress)
+                    onProgressChanged(progress)
                 }
             }
             
@@ -266,7 +373,7 @@ public actor MediaAssetLoader {
         phAsset: PHAsset,
         version: MediaAssetVersion,
         isNetworkAccessAllowed: Bool,
-        onProgressChanged: @escaping (Double) -> Void
+        onProgressChanged: ((Double) -> Void)? = nil
     ) async -> AVAsset? {
         return await withCheckedContinuation { continuation in
             let cacheManager = PHCachingImageManager.default()
@@ -275,7 +382,7 @@ public actor MediaAssetLoader {
             o.isNetworkAccessAllowed = isNetworkAccessAllowed
             o.version = version.getPHVideoRequestOptionsVersion()
             
-            if isNetworkAccessAllowed {
+            if isNetworkAccessAllowed, let onProgressChanged = onProgressChanged {
                 o.progressHandler = { progress, error, obj, map in
                     onProgressChanged(progress)
                 }

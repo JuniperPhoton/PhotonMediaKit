@@ -28,6 +28,18 @@ public enum MediaAssetVersion: String, Hashable, CaseIterable, CustomStringConve
         }
     }
     
+    func getPHLivePhotoRequestOptionsTypes() -> [PHAssetResourceType] {
+        switch self {
+        case .current:
+            // fullSizePairedVideo: Provides the current video data component of a Live Photo asset.
+            // pairedVideo: Provides the original video data component of a Live Photo asset.
+            // Note that if a LivePhoto has never been edited, there is no such PHAssetResource that matches .fullSizePairedVideo.
+            return [.fullSizePairedVideo, .pairedVideo]
+        case .original:
+            return [.pairedVideo]
+        }
+    }
+    
     public var description: String {
         return self.rawValue
     }

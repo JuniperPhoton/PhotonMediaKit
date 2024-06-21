@@ -40,6 +40,8 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     
     private lazy var livePhotoView: PHLivePhotoView = {
         let view = PHLivePhotoView()
+        view.delegate = self
+        view.isMuted = true
         return view
     }()
     
@@ -48,6 +50,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     var onRequestDismiss: (() -> Void)? = nil
     var onSingleTap: (() -> Bool)? = nil
     var startFrame: CGRect = .zero
+    var isAnimating = false
     private(set) var prefersHighDynamicRange: Bool = false
     
     private var loadTask: Task<(), Never>? = nil
@@ -57,6 +60,15 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     
     func setImage(_ asset: AssetProvider) {
         self.asset = asset
+    }
+    
+    func setAnimating(_ animating: Bool) {
+        self.isAnimating = animating
+        if !animating {
+            playLivePhotoView()
+        } else {
+            //hideLivePhotoView()
+        }
     }
     
     func setPrefersHighDynamicRange(_ prefersHighDynamicRange: Bool) {
@@ -97,8 +109,8 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         tryShowLivePhotoView(playbackStyle: .hint)
     }
     
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
         cancelLoadingImage()
         hideLivePhotoView()
     }
@@ -141,13 +153,10 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             options.isNetworkAccessAllowed = false
             
             print("asset size \(asset.pixelSize)")
-            
-            let assetSize = asset.pixelSize
-            let fitRect = self.view.bounds.largestAspectFitRect(of: assetSize)
-            
+                        
             requestId = PHImageManager.default().requestLivePhoto(
                 for: asset,
-                targetSize: fitRect.size,
+                targetSize: asset.pixelSize,
                 contentMode: .aspectFit,
                 options: options
             ) { [weak self] photo, dic in
@@ -159,24 +168,31 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         }
     }
     
-    private func showLivePhotoView(photo: PHLivePhoto, playbackStyle: PHLivePhotoViewPlaybackStyle) {
+    private func playLivePhotoView() {
         let livePhotoView = livePhotoView
-        if livePhotoView.superview != nil {
+        if livePhotoView.superview == nil {
             return
         }
-        
+        livePhotoView.startPlayback(with: .hint)
+    }
+    
+    private func showLivePhotoView(photo: PHLivePhoto, playbackStyle: PHLivePhotoViewPlaybackStyle) {
         guard let innerView = self.scrollView.subviews.last else {
             return
         }
         
-        livePhotoView.livePhoto = photo
-        livePhotoView.delegate = self
-        livePhotoView.isMuted = true
+        let livePhotoView = livePhotoView
+        
+        if livePhotoView.superview == nil {
+            livePhotoView.livePhoto = photo
+            innerView.addSubview(livePhotoView)
+        }
         
         layoutLivePhotoView()
         
-        innerView.addSubview(livePhotoView)
-        livePhotoView.startPlayback(with: playbackStyle)
+        if !isAnimating {
+            livePhotoView.startPlayback(with: playbackStyle)
+        }
     }
     
     private func layoutLivePhotoView() {

@@ -452,6 +452,7 @@ public class UIImageViewer<
             return
         }
         currentViewController = next
+        currentViewController?.setAnimating(true)
         if let nextAsset = next.asset,
            let nextIndex = images.firstIndex(of: nextAsset) {
             syncer.currentIndex = nextIndex
@@ -467,6 +468,7 @@ public class UIImageViewer<
         }
         previous.resetZoomScale()
         updateOrnamentUI()
+        currentViewController?.setAnimating(false)
     }
     
     // MARK: UIPageViewControllerDataSource

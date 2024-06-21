@@ -15,6 +15,7 @@ public protocol UIImageViewerEditSourceProvider: AnyObject {
     func requestDelete(phAsset: PHAsset)
     func requestToggleFavorited(phAsset: PHAsset)
     func requestDismiss()
+    func requestDismissRootController()
     func requestStartLivePhotoPlayback(playbackStyle: PHLivePhotoViewPlaybackStyle)
 }
 

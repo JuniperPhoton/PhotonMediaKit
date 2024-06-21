@@ -36,6 +36,7 @@ public class UIImageViewer<
 >: UIPageViewController, UIImageViewerEditSourceProvider, UIGestureRecognizerDelegate, UIPageViewControllerDataSource, UIPageViewControllerDelegate where OrnamentProvider.AssetProvider == AssetProvider {
     var syncer: CellLocationSyncer = CellLocationSyncer()
     var onRequestDismiss: ((Bool) -> Void)? = nil
+    var onRequestDismissRootController: (() -> Void)? = nil
     var animateTransitToStartLocation = false
     var animateDismissToStartLocation = false
     var animateBackgroundOnViewLoaded = true
@@ -285,6 +286,10 @@ public class UIImageViewer<
         if !animateToDismissToStartFrame(targetView: scrollView, currentViewController: currentViewController) {
             animateToDismiss(targetView: scrollView)
         }
+    }
+    
+    public func requestDismissRootController() {
+        onRequestDismissRootController?()
     }
     
     public func requestStartLivePhotoPlayback(playbackStyle: PHLivePhotoViewPlaybackStyle) {

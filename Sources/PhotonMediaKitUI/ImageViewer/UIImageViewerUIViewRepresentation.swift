@@ -25,6 +25,7 @@ public struct UIImageViewerUIViewRepresentation<AssetProvider: MediaAssetProvide
     private let animateBackgroundOnViewLoaded: Bool
     private let prefersHighDynamicRange: Bool
     private let onRequestDismiss: ((Bool) -> Void)
+    private let onRequestDismissRootController: (() -> Void)
     
     public init(
         images: [AssetProvider],
@@ -34,7 +35,8 @@ public struct UIImageViewerUIViewRepresentation<AssetProvider: MediaAssetProvide
         animateDismissToStartLocation: Bool,
         animateBackgroundOnViewLoaded: Bool,
         prefersHighDynamicRange: Bool,
-        onRequestDismiss: @escaping ((Bool) -> Void)
+        onRequestDismiss: @escaping ((Bool) -> Void),
+        onRequestDismissRootController: @escaping (() -> Void)
     ) {
         self.images = images
         self.syncer = syncer
@@ -44,6 +46,7 @@ public struct UIImageViewerUIViewRepresentation<AssetProvider: MediaAssetProvide
         self.animateBackgroundOnViewLoaded = animateBackgroundOnViewLoaded
         self.onRequestDismiss = onRequestDismiss
         self.prefersHighDynamicRange = prefersHighDynamicRange
+        self.onRequestDismissRootController = onRequestDismissRootController
     }
     
     public func updateUIViewController(
@@ -60,6 +63,7 @@ public struct UIImageViewerUIViewRepresentation<AssetProvider: MediaAssetProvide
         )
         controller.setImages(self.images)
         controller.onRequestDismiss = onRequestDismiss
+        controller.onRequestDismissRootController = onRequestDismissRootController
         controller.ornamentProvider = ornamentProvider
         controller.syncer = self.syncer
         controller.prefersHighDynamicRange = prefersHighDynamicRange

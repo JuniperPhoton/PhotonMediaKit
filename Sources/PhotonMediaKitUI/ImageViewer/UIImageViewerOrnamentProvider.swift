@@ -9,11 +9,13 @@ import SwiftUI
 import PhotonUtility
 import PhotonMediaKit
 import Photos
+import PhotosUI
 
 public protocol UIImageViewerEditSourceProvider: AnyObject {
     func requestDelete(phAsset: PHAsset)
     func requestToggleFavorited(phAsset: PHAsset)
     func requestDismiss()
+    func requestStartLivePhotoPlayback(playbackStyle: PHLivePhotoViewPlaybackStyle)
 }
 
 /// Provide title bar implementation to ``UIImageViewer``.

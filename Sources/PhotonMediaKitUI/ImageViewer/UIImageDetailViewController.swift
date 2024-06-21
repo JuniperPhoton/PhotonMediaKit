@@ -65,7 +65,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     func setAnimating(_ animating: Bool) {
         self.isAnimating = animating
         if !animating {
-            playLivePhotoView()
+            playLivePhotoView(playbackStyle: .hint)
         } else {
             //hideLivePhotoView()
         }
@@ -137,7 +137,8 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         }
     }
     
-    private func tryShowLivePhotoView(playbackStyle: PHLivePhotoViewPlaybackStyle) {
+    // MARK: Live Photo
+    func tryShowLivePhotoView(playbackStyle: PHLivePhotoViewPlaybackStyle) {
         guard let asset = asset?.phAssetRes.phAsset else {
             return
         }
@@ -168,12 +169,12 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         }
     }
     
-    private func playLivePhotoView() {
+    private func playLivePhotoView(playbackStyle: PHLivePhotoViewPlaybackStyle) {
         let livePhotoView = livePhotoView
         if livePhotoView.superview == nil {
             return
         }
-        livePhotoView.startPlayback(with: .hint)
+        livePhotoView.startPlayback(with: playbackStyle)
     }
     
     private func showLivePhotoView(photo: PHLivePhoto, playbackStyle: PHLivePhotoViewPlaybackStyle) {

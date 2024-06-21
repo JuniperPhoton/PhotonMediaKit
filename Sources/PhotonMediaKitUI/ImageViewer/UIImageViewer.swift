@@ -9,6 +9,7 @@ import Foundation
 import Photos
 import SwiftUI
 import PhotonMediaKit
+import PhotosUI
 
 #if canImport(UIKit)
 import UIKit
@@ -284,6 +285,13 @@ public class UIImageViewer<
         if !animateToDismissToStartFrame(targetView: scrollView, currentViewController: currentViewController) {
             animateToDismiss(targetView: scrollView)
         }
+    }
+    
+    public func requestStartLivePhotoPlayback(playbackStyle: PHLivePhotoViewPlaybackStyle) {
+        guard let currentViewController = currentViewController else {
+            return
+        }
+        currentViewController.tryShowLivePhotoView(playbackStyle: playbackStyle)
     }
     
     public func requestDelete(phAsset: PHAsset) {

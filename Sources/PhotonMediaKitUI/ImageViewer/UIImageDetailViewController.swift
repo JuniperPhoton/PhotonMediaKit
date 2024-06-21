@@ -70,7 +70,8 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         scrollView.setup()
         scrollView.imageContentMode = .aspectFit
         scrollView.initialOffset = .center
-        
+        scrollView.addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(onLongPress)))
+
         // In stage manager, the view's bounds won't be updated until next render cycle.
         DispatchQueue.main.async { [self] in
             // We use the traditional frame method to layout the scrollView
@@ -80,7 +81,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             
             showLoadingView()
             self.view.addSubview(scrollView)
-            
+
             currentViewSize = self.view.frame.size
             
             if startFrame != .zero {
@@ -93,7 +94,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        tryShowLivePhotoView()
+        tryShowLivePhotoView(playbackStyle: .hint)
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -115,12 +116,19 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         }
     }
     
-    private func tryShowLivePhotoView() {
+    @objc
+    private func onLongPress(gesture: UIGestureRecognizer) {
+        if gesture.state == .began {
+            tryShowLivePhotoView(playbackStyle: .full)
+        }
+    }
+    
+    private func tryShowLivePhotoView(playbackStyle: PHLivePhotoViewPlaybackStyle) {
         guard let asset = asset?.phAssetRes.phAsset else {
             return
         }
         
-        if self.scrollView.superview == nil {
+        if self.scrollView.superview == nil || livePhotoView.superview != nil {
             return
         }
         
@@ -143,27 +151,30 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             ) { [weak self] photo, dic in
                 guard let self = self else { return }
                 if let photo = photo {
-                    showLivePhotoView(photo: photo)
+                    showLivePhotoView(photo: photo, playbackStyle: playbackStyle)
                 }
             }
         }
     }
     
-    private func showLivePhotoView(photo: PHLivePhoto) {
+    private func showLivePhotoView(photo: PHLivePhoto, playbackStyle: PHLivePhotoViewPlaybackStyle) {
         let livePhotoView = livePhotoView
         if livePhotoView.superview != nil {
             return
         }
         
+        guard let innerView = self.scrollView.subviews.last else {
+            return
+        }
+        
         livePhotoView.livePhoto = photo
-        livePhotoView.translatesAutoresizingMaskIntoConstraints = false
         livePhotoView.delegate = self
         livePhotoView.isMuted = true
         
         layoutLivePhotoView()
         
-        self.view.addSubview(livePhotoView)
-        livePhotoView.startPlayback(with: .hint)
+        innerView.addSubview(livePhotoView)
+        livePhotoView.startPlayback(with: playbackStyle)
     }
     
     private func layoutLivePhotoView() {
@@ -171,8 +182,12 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             return
         }
         
+        guard let innerView = self.scrollView.subviews.last else {
+            return
+        }
+        
         let size = livePhoto.size
-        let fitRect = self.view.bounds.largestAspectFitRect(of: size)
+        let fitRect = innerView.bounds.largestAspectFitRect(of: size)
         
         livePhotoView.frame = fitRect
     }
@@ -439,7 +454,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         scrollView.display(image: fullSizeImage)
         scrollView.isUserInteractionEnabled = enableZoom
         loadingView.removeFromSuperview()
-        tryShowLivePhotoView()
+        tryShowLivePhotoView(playbackStyle: .hint)
     }
     
     private func displayImageForTransition(uiImage: UIImage, enableZoom: Bool) async {

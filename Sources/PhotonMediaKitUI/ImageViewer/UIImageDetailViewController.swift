@@ -120,6 +120,8 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     private func onLongPress(gesture: UIGestureRecognizer) {
         if gesture.state == .began {
             tryShowLivePhotoView(playbackStyle: .full)
+        } else if gesture.state == .ended {
+            hideLivePhotoView()
         }
     }
     

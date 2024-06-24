@@ -56,6 +56,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     private var currentViewSize: CGSize = .zero
     private var originalScale: CGFloat = 1.0
     private var requestId: PHImageRequestID? = nil
+    private var livePhoto: PHLivePhoto? = nil
     
     func setImage(_ asset: AssetProvider) {
         self.asset = asset
@@ -142,27 +143,33 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             return
         }
         
-        if self.scrollView.superview == nil || livePhotoView.superview != nil {
+        if self.scrollView.superview == nil {
             return
         }
         
         if asset.isLivePhotoSubType() {
-            let options = PHLivePhotoRequestOptions()
-            options.version = .current
-            options.deliveryMode = .highQualityFormat
-            options.isNetworkAccessAllowed = false
-            
-            print("asset size \(asset.pixelSize)")
-                        
-            requestId = PHImageManager.default().requestLivePhoto(
-                for: asset,
-                targetSize: asset.pixelSize,
-                contentMode: .aspectFit,
-                options: options
-            ) { [weak self] photo, dic in
-                guard let self = self else { return }
-                if let photo = photo {
-                    showLivePhotoView(photo: photo, playbackStyle: playbackStyle)
+            if let livePhoto = self.livePhoto {
+                showLivePhotoView(photo: livePhoto, playbackStyle: playbackStyle)
+            } else {
+                let options = PHLivePhotoRequestOptions()
+                options.version = .current
+                options.deliveryMode = .highQualityFormat
+                options.isNetworkAccessAllowed = false
+                
+                print("asset size \(asset.pixelSize)")
+                
+                requestId = PHImageManager.default().requestLivePhoto(
+                    for: asset,
+                    targetSize: asset.pixelSize,
+                    contentMode: .aspectFit,
+                    options: options
+                ) { [weak self] photo, dic in
+                    guard let self = self else { return }
+                    
+                    if let photo = photo {
+                        self.livePhoto = photo
+                        showLivePhotoView(photo: photo, playbackStyle: playbackStyle)
+                    }
                 }
             }
         }

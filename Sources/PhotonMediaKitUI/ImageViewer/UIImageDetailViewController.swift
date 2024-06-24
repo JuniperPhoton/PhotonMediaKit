@@ -105,7 +105,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        tryShowLivePhotoView(playbackStyle: .hint)
+        tryShowLivePhotoView(playbackStyle: nil)
     }
     
     override func viewDidDisappear(_ animated: Bool) {
@@ -137,7 +137,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     }
     
     // MARK: Live Photo
-    func tryShowLivePhotoView(playbackStyle: PHLivePhotoViewPlaybackStyle) {
+    func tryShowLivePhotoView(playbackStyle: PHLivePhotoViewPlaybackStyle?) {
         guard let asset = asset?.phAssetRes.phAsset else {
             return
         }
@@ -176,7 +176,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         livePhotoView.startPlayback(with: playbackStyle)
     }
     
-    private func showLivePhotoView(photo: PHLivePhoto, playbackStyle: PHLivePhotoViewPlaybackStyle) {
+    private func showLivePhotoView(photo: PHLivePhoto, playbackStyle: PHLivePhotoViewPlaybackStyle?) {
         guard let innerView = self.scrollView.subviews.last else {
             return
         }
@@ -190,7 +190,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         
         layoutLivePhotoView()
         
-        if !isAnimating {
+        if !isAnimating, let playbackStyle = playbackStyle {
             livePhotoView.startPlayback(with: playbackStyle)
         }
     }
@@ -472,7 +472,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         scrollView.display(image: fullSizeImage)
         scrollView.isUserInteractionEnabled = enableZoom
         loadingView.removeFromSuperview()
-        tryShowLivePhotoView(playbackStyle: .hint)
+        tryShowLivePhotoView(playbackStyle: nil)
     }
     
     private func displayImageForTransition(uiImage: UIImage, enableZoom: Bool) async {

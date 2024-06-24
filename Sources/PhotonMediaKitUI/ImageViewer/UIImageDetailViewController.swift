@@ -41,7 +41,6 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     private lazy var livePhotoView: PHLivePhotoView = {
         let view = PHLivePhotoView()
         view.delegate = self
-        view.isMuted = true
         return view
     }()
     

@@ -162,8 +162,12 @@ public actor MediaAssetLoader {
                 targetSize: CGSize(width: phAsset.pixelWidth, height: phAsset.pixelHeight),
                 contentMode: .aspectFit,
                 options: o
-            ) { photo, _ in
-                continuation.resume(returning: photo)
+            ) { photo, dic in
+                if (dic?[PHImageResultIsDegradedKey] as? Bool) == true {
+                    return
+                } else {
+                    continuation.resume(returning: photo)
+                }
             }
             if Task.isCancelled {
                 manager.cancelImageRequest(id)

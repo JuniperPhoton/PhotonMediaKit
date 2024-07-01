@@ -30,13 +30,41 @@ public class MediaAssetWriter {
     
     public static let shared = MediaAssetWriter()
     
+    /// Check if the readWrite permission is denied.
+    @available(*, deprecated, renamed: "isDeniedForReadWrite", message: "Use isDeniedForReadWrite instead.")
     public var isDenied: Bool {
         let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         return status == .denied || status == .restricted
     }
     
+    /// Check if the readWrite permission is authorized.
+    @available(*, deprecated, renamed: "isAuthorizedForReadWrite", message: "Use isAuthorizedForReadWrite instead.")
     public var isAuthorized: Bool {
         let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        return status == .authorized || status == .limited
+    }
+    
+    /// Check if the readWrite permission is denied.
+    public var isDeniedForReadWrite: Bool {
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        return status == .denied || status == .restricted
+    }
+    
+    /// Check if the readWrite permission is denied.
+    public var isDeniedForAddOnly: Bool {
+        let status = PHPhotoLibrary.authorizationStatus(for: .addOnly)
+        return status == .denied || status == .restricted
+    }
+    
+    /// Check if the readWrite permission is authorized.
+    public var isAuthorizedForReadWrite: Bool {
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        return status == .authorized || status == .limited
+    }
+    
+    /// Check if the addOnly permission is authorized.
+    public var isAuthorizedForAddOnly: Bool {
+        let status = PHPhotoLibrary.authorizationStatus(for: .addOnly)
         return status == .authorized || status == .limited
     }
     
@@ -44,8 +72,10 @@ public class MediaAssetWriter {
         // private
     }
     
-    public func requestForPermission() async -> Bool {
-        let status = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+    /// Request for authorization for a specific level.
+    /// - parameter level: The ``PHAccessLevel`` level to request.
+    public func requestForPermission(for level: PHAccessLevel = .readWrite) async -> Bool {
+        let status = await PHPhotoLibrary.requestAuthorization(for: level)
         if status == .authorized || status == .limited {
             return true
         }

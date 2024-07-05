@@ -13,7 +13,6 @@ import UIKit
 @objc protocol ImageScrollViewDelegate: UIScrollViewDelegate {
     func imageScrollViewDidChangeOrientation(imageScrollView: UIImageScrollView)
     func provideContentView(uiImage: UIImage) -> UIImageView?
-    func onSingleTap(imageScrollView: UIImageScrollView) -> Bool
     func onDoubleTap(imageScrollView: UIImageScrollView) -> Bool
 }
 
@@ -205,21 +204,25 @@ class UIImageScrollView: UIScrollView {
     
     func display(image: UIImage) {
         zoomView?.removeFromSuperview()
-        zoomView = imageScrollViewDelegate?.provideContentView(uiImage: image)
-        addSubview(zoomView!)
         
-        zoomView!.isUserInteractionEnabled = true
+        guard let zoomView = imageScrollViewDelegate?.provideContentView(uiImage: image) else {
+            return
+        }
         
-        let doubleTapGesture = UITapGestureRecognizer(target: self, action: #selector(UIImageScrollView.doubleTapGestureRecognizer(_:)))
+        addSubview(zoomView)
+        
+        zoomView.isUserInteractionEnabled = true
+        
+        let doubleTapGesture = UITapGestureRecognizer(
+            target: self,
+            action: #selector(onDoubleTap)
+        )
         doubleTapGesture.numberOfTapsRequired = 2
-        zoomView!.addGestureRecognizer(doubleTapGesture)
-        
-        let singleTapGesture = UITapGestureRecognizer(target: self, action: #selector(onSingleTap))
-        zoomView!.addGestureRecognizer(singleTapGesture)
-        
-        singleTapGesture.require(toFail: doubleTapGesture)
-        
+        zoomView.addGestureRecognizer(doubleTapGesture)
+                
         self.imageSize = image.size
+        self.zoomView = zoomView
+        
         configureImageForSize(image.size)
     }
     
@@ -286,7 +289,7 @@ class UIImageScrollView: UIScrollView {
     }
     
     // MARK: - Gesture
-    @objc private func doubleTapGestureRecognizer(_ gestureRecognizer: UIGestureRecognizer) {
+    @objc private func onDoubleTap(_ gestureRecognizer: UIGestureRecognizer) {
         if imageScrollViewDelegate?.onDoubleTap(imageScrollView: self) == true {
             return
         }
@@ -298,12 +301,6 @@ class UIImageScrollView: UIScrollView {
             let center = gestureRecognizer.location(in: gestureRecognizer.view)
             let zoomRect = zoomRectForScale(UIImageScrollView.kZoomInFactorFromMinWhenDoubleTap * minimumZoomScale, center: center)
             zoom(to: zoomRect, animated: true)
-        }
-    }
-    
-    @objc private func onSingleTap(tag: UITapGestureRecognizer) {
-        if imageScrollViewDelegate?.onSingleTap(imageScrollView: self) == true {
-            return
         }
     }
     

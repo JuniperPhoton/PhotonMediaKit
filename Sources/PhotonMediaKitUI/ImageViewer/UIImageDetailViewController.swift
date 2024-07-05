@@ -47,7 +47,6 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     var asset: AssetProvider? = nil
     var onZoomChanged: ((ClosedRange<CGFloat>, CGFloat) -> Void)? = nil
     var onRequestDismiss: (() -> Void)? = nil
-    var onSingleTap: (() -> Bool)? = nil
     var startFrame: CGRect = .zero
     var isAnimating = false
     private(set) var prefersHighDynamicRange: Bool = false
@@ -541,10 +540,6 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             }
         }
         return view
-    }
-    
-    func onSingleTap(imageScrollView: UIImageScrollView) -> Bool {
-        return onSingleTap?() ?? false
     }
     
     func onDoubleTap(imageScrollView: UIImageScrollView) -> Bool {

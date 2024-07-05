@@ -66,6 +66,7 @@ public class UIImageViewer<
     }()
     
     private var showOrnamentUI = true
+    private var recognizerDelegate = RecognizerDelegate()
     
     func setImages(_ images: [AssetProvider]) {
         self.images.removeAll()
@@ -100,6 +101,15 @@ public class UIImageViewer<
         
         self.view.addSubview(titleBarContainer)
         self.view.addSubview(toolBarContainer)
+        
+        let tapRecognizer = UITapGestureRecognizer(
+            target: self,
+            action: #selector(onSingleTap)
+        )
+        
+        // We should use a dedicated delegate since UIPageViewController has its own implementation.
+        tapRecognizer.delegate = recognizerDelegate
+        self.view.addGestureRecognizer(tapRecognizer)
         
         // Disable autoresizing mask translation
         titleBarContainer.translatesAutoresizingMaskIntoConstraints = false
@@ -227,7 +237,7 @@ public class UIImageViewer<
     private func toggleOrnamentVisibility(hide: Bool) {
         let targetAlpha = hide ? 0.0 : 1.0
         
-        UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseOut) {
+        UIView.animate(withDuration: 0.1, delay: 0, options: .curveEaseIn) {
             self.titleBarContainer.alpha = targetAlpha
             self.toolBarContainer.alpha = targetAlpha
         }
@@ -422,13 +432,12 @@ public class UIImageViewer<
                 self.toggleOrnamentVisibility(hide: false)
             }
         }
-        controller.onSingleTap = { [weak self] in
-            guard let self = self else { return false }
-            showOrnamentUI.toggle()
-            self.toggleOrnamentVisibility(hide: !showOrnamentUI)
-            return true
-        }
         return controller
+    }
+    
+    @objc private func onSingleTap(recognizer: UITapGestureRecognizer) {
+        showOrnamentUI = self.titleBarContainer.alpha == 0.0
+        self.toggleOrnamentVisibility(hide: !showOrnamentUI)
     }
     
     private func updateCurrentAsset() async {
@@ -534,6 +543,23 @@ public class UIImageViewer<
         set {
             getScrollView()?.isScrollEnabled = newValue
         }
+    }
+}
+
+private class RecognizerDelegate: NSObject, UIGestureRecognizerDelegate {
+    public func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer
+    ) -> Bool {
+        guard let singleTap = gestureRecognizer as? UITapGestureRecognizer, singleTap.numberOfTapsRequired == 1 else {
+            return false
+        }
+        
+        guard let doubleTap = otherGestureRecognizer as? UITapGestureRecognizer, doubleTap.numberOfTapsRequired == 2 else {
+            return false
+        }
+        
+        return true
     }
 }
 

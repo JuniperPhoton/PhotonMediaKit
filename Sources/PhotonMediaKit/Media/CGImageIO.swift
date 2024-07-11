@@ -237,7 +237,18 @@ public actor CGImageIO {
         guard let map = getProperties(url: file) else {
             return .up
         }
-        guard let orientation = map["Orientation"] as? UInt32 else {
+        guard let orientation = map[kCGImagePropertyOrientation as String] as? UInt32 else {
+            return .up
+        }
+        return .init(rawValue: orientation) ?? .up
+    }
+    
+    /// Get the orientation from EXIF of the image ``file``.
+    public func getExifOrientation(data: Data) -> CGImagePropertyOrientation {
+        guard let map = getProperties(data: data) else {
+            return .up
+        }
+        guard let orientation = map[kCGImagePropertyOrientation as String] as? UInt32 else {
             return .up
         }
         return .init(rawValue: orientation) ?? .up

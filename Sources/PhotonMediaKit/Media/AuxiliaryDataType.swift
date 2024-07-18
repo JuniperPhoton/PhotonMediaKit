@@ -13,20 +13,23 @@ import CoreImage
 /// To access the key from CGImage framework, use ``cgImageKey`` property.
 public enum AuxiliaryDataType: CaseIterable {
     case hdrGainMap
+    case isoGainMap
     case depth
     case disparity
     case portraitEffectsMatte
     
     public var cgImageKey: CFString {
         switch self {
+        case .isoGainMap:
+            return "kCGImageAuxiliaryDataTypeISOGainMap" as CFString
         case .hdrGainMap:
-            kCGImageAuxiliaryDataTypeHDRGainMap
+            return kCGImageAuxiliaryDataTypeHDRGainMap
         case .depth:
-            kCGImageAuxiliaryDataTypeDepth
+            return kCGImageAuxiliaryDataTypeDepth
         case .disparity:
-            kCGImageAuxiliaryDataTypeDisparity
+            return kCGImageAuxiliaryDataTypeDisparity
         case .portraitEffectsMatte:
-            kCGImageAuxiliaryDataTypePortraitEffectsMatte
+            return kCGImageAuxiliaryDataTypePortraitEffectsMatte
         }
     }
 }

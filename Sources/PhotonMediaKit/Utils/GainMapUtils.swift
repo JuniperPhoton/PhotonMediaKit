@@ -126,14 +126,20 @@ public class GainMapUtils {
         return CGSize(width: width, height: height)
     }
     
-    /// Extract the HDR gain map information from the data and return ``HDRGainMapInfo``.
+    // Extract the HDR gain map information from the data and return ``HDRGainMapInfo``.
     ///
     /// See more: https://developer.apple.com/documentation/appkit/images_and_pdf/applying_apple_hdr_effect_to_your_photos
     public func extractGainMap(data: Data) async -> GainMapInfo? {
         guard let auxiliaryMap = await extractGainMapDictionary(data: data) as? Dictionary<CFString, Any> else {
             return nil
         }
-        
+        return await extractGainMap(auxiliaryMap: auxiliaryMap)
+    }
+    
+    /// Extract the HDR gain map information from the data and return ``HDRGainMapInfo``.
+    ///
+    /// See more: https://developer.apple.com/documentation/appkit/images_and_pdf/applying_apple_hdr_effect_to_your_photos
+    public func extractGainMap(auxiliaryMap: Dictionary<CFString, Any>) async -> GainMapInfo? {
         if let desc = auxiliaryMap[kCGImageAuxiliaryDataInfoDataDescription] as? Dictionary<String, Any>,
            let metadata = auxiliaryMap[kCGImageAuxiliaryDataInfoMetadata],
            let data = auxiliaryMap[kCGImageAuxiliaryDataInfoData] as? Data {
@@ -152,11 +158,13 @@ public class GainMapUtils {
             let cgMetadata = metadata as! CGImageMetadata
             var gainMapHeadroom: CGFloat? = nil
             var valid = false
+            
             if let tags = CGImageMetadataCopyTags(cgMetadata) as? Array<Any> {
                 for tag in tags {
                     let cfTag = tag as! CGImageMetadataTag
                     let name = CGImageMetadataTagCopyName(cfTag) as? String
                     let value = CGImageMetadataTagCopyValue(cfTag)
+                    
                     if name == GainMapUtils.keyHDRGainMapHeadroom, let value = value as? String, let float = Float(value) {
                         gainMapHeadroom = CGFloat(float)
                     }
@@ -220,6 +228,7 @@ public class GainMapUtils {
         var mutableDesc = metadata
         
         var cropped = ciImage.cropped(to: rect)
+        
         cropped = cropped.transformed(
             by: CGAffineTransform.init(
                 translationX: -cropped.extent.minX,
@@ -237,8 +246,6 @@ public class GainMapUtils {
         if flipHorizontally {
             cropped = cropped.transformed(by: CGAffineTransform(scaleX: -1, y: 1))
         }
-        
-        cropped = restrictSize(cropped)
         
         mutableDesc[GainMapUtils.keyWidth] = cropped.extent.width
         mutableDesc[GainMapUtils.keyHeight] = cropped.extent.height
@@ -272,8 +279,7 @@ public class GainMapUtils {
                 return nil
             }
             
-            var transformed = ciImage.transformed(by: ciImage.orientationTransform(for: orientation))
-            transformed = restrictSize(transformed)
+            let transformed = ciImage.transformed(by: ciImage.orientationTransform(for: orientation))
             
             mutableDesc[GainMapUtils.keyWidth] = transformed.extent.width
             mutableDesc[GainMapUtils.keyHeight] = transformed.extent.height
@@ -321,17 +327,34 @@ public class GainMapUtils {
         ciImage = result.ciImage
         mutableDesc = result.desc
         
-        guard let gainMapImageData = ciImage.getBitmapData(ciContext: ciContext) else {
+        let width = Int(ciImage.extent.width)
+        let height = Int(ciImage.extent.height)
+        let targetBytesPerRow = nextMultipleOfFour(after: width)
+        
+        guard let gainMapImageData = ciImage.getBitmapData(ciContext: ciContext, bytesPerRow: targetBytesPerRow) else {
             return nil
         }
+        
+        mutableDesc[GainMapUtils.keyBytesPerRow] = targetBytesPerRow
+        mutableDesc[GainMapUtils.keyWidth] = width
+        mutableDesc[GainMapUtils.keyHeight] = height
+        
+        print("gain map apply transformation, targetBytesPerRow \(targetBytesPerRow), width \(width), height \(height)")
         
         return GainMapAuxiliaryDataResult(gainMapImageData: gainMapImageData, desc: mutableDesc)
     }
     
-    private func restrictSize(_ ciImage: CIImage) -> CIImage {
-        let maxWidth = 2000.0
-        let scale = maxWidth / ciImage.extent.width
-        return ciImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+    private func nextMultipleOfFour(after x: Int) -> Int {
+        // Find the remainder when x is divided by 4
+        let remainder = x % 4
+        
+        // If the remainder is 0, x is already divisible by 4, so add 4
+        if remainder == 0 {
+            return x
+        } else {
+            // Otherwise, add the difference between 4 and the remainder to x
+            return x + (4 - remainder)
+        }
     }
 }
 
@@ -346,12 +369,10 @@ private extension CIImage {
         )
     }
     
-    func getBitmapData(ciContext: CIContext) -> Data? {
-        let width = self.extent.width
+    func getBitmapData(ciContext: CIContext, bytesPerRow: Int) -> Data? {
         let height = self.extent.height
         
-        let rowBytes = 1 * Int(width)
-        let dataSize = rowBytes * Int(height)
+        let dataSize = bytesPerRow * Int(height)
         var gainMapImageData = Data(count: Int(dataSize))
         
         gainMapImageData.withUnsafeMutableBytes {
@@ -359,7 +380,7 @@ private extension CIImage {
                 ciContext.render(
                     self,
                     toBitmap: baseAddress,
-                    rowBytes: rowBytes,
+                    rowBytes: bytesPerRow,
                     bounds: self.extent,
                     format: .L8,
                     colorSpace: nil

@@ -254,6 +254,26 @@ public class GainMapUtils {
         return GainMapAuxiliaryImageResult(ciImage: cropped, desc: mutableDesc)
     }
     
+    /// Scale the ``gainMap`` image to match the ``primaryImage``.
+    ///
+    /// On iOS 18, if the dimensions of gainMap image is not the half of the primary image,
+    /// when zooming photos there will be over-saturated effect on the image.
+    public func scaleGainMap(toMatch primaryImage: CIImage, gainMap: CIImage) -> CIImage {
+        let primaryExtent = primaryImage.extent
+        let targetWidth = primaryExtent.width / 2
+        let targetScale = targetWidth / gainMap.extent.width
+        
+        let output = gainMap.transformed(by: CGAffineTransform(scaleX: targetScale, y: targetScale))
+        let croppedRect = CGRect(
+            x: 0,
+            y: 0,
+            width: Int(gainMap.extent.width * targetScale),
+            height: Int(gainMap.extent.height * targetScale)
+        )
+        
+        return output.cropped(to: croppedRect)
+    }
+    
     /// Read the ``CGImagePropertyOrientation`` from the desc map and rotate the auxiliary image based on the orientation
     /// and update the width, height and orientation of the desc and return the new one.
     /// - parameter ciContext: The ``CIContext`` to perform render. It will be better to cache the same ciContext object for later use.

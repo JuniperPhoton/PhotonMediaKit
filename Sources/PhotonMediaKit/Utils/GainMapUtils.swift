@@ -261,14 +261,16 @@ public class GainMapUtils {
     public func scaleGainMap(toMatch primaryImage: CIImage, gainMap: CIImage) -> CIImage {
         let primaryExtent = primaryImage.extent
         let targetWidth = primaryExtent.width / 2
-        let targetScale = targetWidth / gainMap.extent.width
-        
-        let output = gainMap.transformed(by: CGAffineTransform(scaleX: targetScale, y: targetScale))
+        let targetHeight = primaryExtent.height / 2
+        let targetScaleX = targetWidth / gainMap.extent.width
+        let targetScaleY = targetHeight / gainMap.extent.height
+                
+        let output = gainMap.transformed(by: CGAffineTransform(scaleX: targetScaleX, y: targetScaleY))
         let croppedRect = CGRect(
             x: 0,
             y: 0,
-            width: Int(gainMap.extent.width * targetScale),
-            height: Int(gainMap.extent.height * targetScale)
+            width: round(targetWidth),
+            height: round(targetHeight)
         )
         
         return output.cropped(to: croppedRect)

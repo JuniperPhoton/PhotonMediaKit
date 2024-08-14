@@ -12,11 +12,13 @@ import PhotonMediaKit
 /// A view to display a ``MediaAssetRes`` thumbnail image, which can be used in a list or a grid view.
 public struct PHAssetImageView: View {
     let asset: MediaAssetRes
+    let contentMode: ContentMode
     
     @State private var cgImage: CGImage? = nil
     
-    public init(asset: MediaAssetRes) {
+    public init(asset: MediaAssetRes, contentMode: ContentMode = .fill) {
         self.asset = asset
+        self.contentMode = contentMode
     }
     
     public var body: some View {
@@ -25,7 +27,7 @@ public struct PHAssetImageView: View {
                 if let cgImage = cgImage {
                     Image(cgImage, scale: 1.0, label: Text(""))
                         .resizable()
-                        .aspectRatio(contentMode: .fill)
+                        .aspectRatio(contentMode: contentMode)
                         .zIndex(1)
                 } else {
                     Rectangle()

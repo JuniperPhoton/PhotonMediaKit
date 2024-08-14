@@ -28,6 +28,20 @@ public class MediaAssetWriter {
         // empty
     }
     
+    public static func getCacheDir() -> URL? {
+        guard let cacheDir = try? FileManager.default.url(
+            for: .documentDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        ) else {
+            print("error on create cache url for file")
+            return nil
+        }
+        
+        return cacheDir
+    }
+    
     public static let shared = MediaAssetWriter()
     
     /// Check if the readWrite permission is denied.
@@ -498,15 +512,16 @@ public class MediaAssetWriter {
         }
     }
     
-    public func createTempFileToSave(originalFilename: String, utType: UTType) -> URL? {
+    public func createTempFileToSave(rootDir: URL? = getCacheDir(), originalFilename: String, utType: UTType) -> URL? {
         guard let extensions = utType.preferredFilenameExtension else {
             print("error on getting preferredFilenameExtension")
             return nil
         }
-        return createTempFileToSave(originalFilename: originalFilename, extensions: extensions)
+        return createTempFileToSave(rootDir: rootDir, originalFilename: originalFilename, extensions: extensions)
     }
     
     public func createTempFileToSave(
+        rootDir: URL? = getCacheDir() ,
         originalFilename: String,
         subDirName: String? = nil,
         extensions: String

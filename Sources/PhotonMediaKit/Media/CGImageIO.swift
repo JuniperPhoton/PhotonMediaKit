@@ -278,7 +278,7 @@ public actor CGImageIO {
     }
     
     /// Get the exif map of the image ``url``.
-    public func getProperties(url: URL) -> Dictionary<String, Any>? {
+    public func getProperties(url: URL) -> CIImageProperties? {
         let options: [String: Any] = [
             kCGImageSourceShouldCacheImmediately as String: false,
         ]
@@ -298,7 +298,7 @@ public actor CGImageIO {
     }
     
     /// Get the properties of the image ``Data``.
-    public func getProperties(data: Data) -> Dictionary<String, Any>? {
+    public func getProperties(data: Data) -> CIImageProperties? {
         let options: [String: Any] = [
             kCGImageSourceShouldCacheImmediately as String: false,
         ]

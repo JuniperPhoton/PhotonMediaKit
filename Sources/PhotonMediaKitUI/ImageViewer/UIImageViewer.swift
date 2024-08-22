@@ -18,14 +18,30 @@ import UIKit
 /// An object to sync information between cell view and ``UIImageViewer``.
 @MainActor
 public class CellLocationSyncer: ObservableObject {
+    private static let invalidatedValue: Int = -1
+    
     /// Current index of the ``UIImageViewer``. This value should be set within ``UIImageViewer``
-    @Published public var currentIndex: Int = 0
+    public private(set) var currentIndex: Int = CellLocationSyncer.invalidatedValue
+    public private(set) var previousIndex: Int = CellLocationSyncer.invalidatedValue
     
     /// Current frame of the cell view in image list. This value should be set within the list.
     public var currentFrame: CGRect = .zero
     
     public init() {
         // empty
+    }
+    
+    /// Update the current index and notify changes.
+    public func updateCurrentIndex(_ index: Int) {
+        self.previousIndex = currentIndex
+        self.currentIndex = index
+        self.objectWillChange.send()
+    }
+    
+    /// Invalidate the indexes. Unlike ``updateCurrentIndex(_:)``, this method won't trigger any updates.
+    public func invalidate() {
+        self.previousIndex = CellLocationSyncer.invalidatedValue
+        self.currentIndex = CellLocationSyncer.invalidatedValue
     }
 }
 
@@ -327,7 +343,7 @@ public class UIImageViewer<
                     }
                     
                     currentIndex = currentIndex.clamp(to: lower...upper)
-                    syncer.currentIndex = currentIndex
+                    syncer.updateCurrentIndex(currentIndex)
                     setCurrentController(direction: currentIndex >= index ? .forward : .reverse)
                 }
             }
@@ -477,7 +493,7 @@ public class UIImageViewer<
         currentViewController?.setAnimating(true)
         if let nextAsset = next.asset,
            let nextIndex = images.firstIndex(of: nextAsset) {
-            syncer.currentIndex = nextIndex
+            syncer.updateCurrentIndex(nextIndex)
         }
     }
     

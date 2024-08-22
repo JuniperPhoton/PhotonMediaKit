@@ -77,14 +77,15 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        scrollView.initialize()
-        scrollView.setup()
-        scrollView.imageContentMode = .aspectFit
-        scrollView.initialOffset = .center
-        scrollView.addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(onLongPress)))
-
-        // In stage manager, the view's bounds won't be updated until next render cycle.
-        DispatchQueue.main.async { [self] in
+        let action = { [weak self] in
+            guard let self = self else { return }
+            
+            scrollView.initialize()
+            scrollView.setup()
+            scrollView.imageContentMode = .aspectFit
+            scrollView.initialOffset = .center
+            scrollView.addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(onLongPress)))
+            
             // We use the traditional frame method to layout the scrollView
             // Since it's resizing is based on the frame.
             scrollView.frame = self.view.bounds
@@ -92,14 +93,19 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             
             showLoadingView()
             self.view.addSubview(scrollView)
-
+            
             currentViewSize = self.view.frame.size
             
-            if startFrame != .zero {
-                loadImageForTransition()
-            } else {
-                loadFullImage()
+            loadImageForTransition()
+        }
+        
+        if self.view.bounds.isEmpty {
+            // In stage manager, the view's bounds won't be updated until next render cycle.
+            DispatchQueue.main.async {
+                action()
             }
+        } else {
+            action()
         }
     }
     
@@ -251,18 +257,21 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         self.scrollView.zoomScale = self.scrollView.minimumZoomScale
     }
     
-    func loadImageForTransition() {
+    private func loadImageForTransition() {
+        guard let asset = asset else {
+            return
+        }
+        
+        if self.scrollView.subviews.count > 0 {
+            return
+        }
+        
         Task {
-            guard let asset = asset else {
-                return
-            }
-            if self.scrollView.subviews.count > 0 {
-                return
-            }
+            let size = currentViewSize
             
             guard let thumbnailImage = await MediaAssetLoader().fetchUIImage(
                 phAsset: asset.phAssetRes.phAsset,
-                option: .size(w: currentViewSize.width, h: currentViewSize.height),
+                option: .size(w: size.width, h: size.height),
                 version: .current,
                 prefersHighDynamicRange: false
             ) else {
@@ -483,43 +492,50 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     
     private func displayImageForTransition(uiImage: UIImage, enableZoom: Bool) async {
         return await withCheckedContinuation { continuation in
-            let startBound = CGRect(x: 0, y: 0, width: startFrame.width, height: startFrame.height)
-            let aspectRatioFrame = AVMakeRect(aspectRatio: uiImage.size, insideRect: startBound)
-            
-            scrollView.frame = startBound
-            
-            let originalTransform = scrollView.transform
-            scrollView.transform = originalTransform.translatedBy(x: startFrame.minX, y: startFrame.minY)
-            
-            scrollView.display(image: uiImage)
-            scrollView.isUserInteractionEnabled = enableZoom
-            
-            let animation = {
-                let currentFrame = self.view.bounds
-                let x = currentFrame.midX - self.startFrame.width / 2
-                let y = currentFrame.midY - self.startFrame.height / 2
-                
-                let scaledX = currentFrame.width / aspectRatioFrame.width
-                let scaledY = currentFrame.height / aspectRatioFrame.height
-                
-                self.scrollView.reconfigureImageSize()
-                
-                let scale = min(scaledX, scaledY)
-                self.scrollView.transform = originalTransform.translatedBy(x: x, y: y).scaledBy(x: scale, y: scale)
-            }
-            
-            let completion = {
-                self.scrollView.transform = originalTransform
-                self.scrollView.frame = self.view.bounds
-                self.scrollView.reconfigureImageSize()
-                
+            if startFrame.isEmpty {
+                scrollView.display(image: uiImage)
+                scrollView.isUserInteractionEnabled = enableZoom
+                scrollView.reconfigureImageSize()
                 continuation.resume()
-            }
-            
-            UIView.animate(withDuration: 0.2, delay: 0, options: .curveEaseOut) {
-                animation()
-            } completion: { _ in
-                completion()
+            } else {
+                let startBound = CGRect(x: 0, y: 0, width: startFrame.width, height: startFrame.height)
+                let aspectRatioFrame = AVMakeRect(aspectRatio: uiImage.size, insideRect: startBound)
+                
+                scrollView.frame = startBound
+                
+                let originalTransform = scrollView.transform
+                scrollView.transform = originalTransform.translatedBy(x: startFrame.minX, y: startFrame.minY)
+                
+                scrollView.display(image: uiImage)
+                scrollView.isUserInteractionEnabled = enableZoom
+                
+                let animation = {
+                    let currentFrame = self.view.bounds
+                    let x = currentFrame.midX - self.startFrame.width / 2
+                    let y = currentFrame.midY - self.startFrame.height / 2
+                    
+                    let scaledX = currentFrame.width / aspectRatioFrame.width
+                    let scaledY = currentFrame.height / aspectRatioFrame.height
+                    
+                    self.scrollView.reconfigureImageSize()
+                    
+                    let scale = min(scaledX, scaledY)
+                    self.scrollView.transform = originalTransform.translatedBy(x: x, y: y).scaledBy(x: scale, y: scale)
+                }
+                
+                let completion = {
+                    self.scrollView.transform = originalTransform
+                    self.scrollView.frame = self.view.bounds
+                    self.scrollView.reconfigureImageSize()
+                    
+                    continuation.resume()
+                }
+                
+                UIView.animate(withDuration: 0.2, delay: 0, options: .curveEaseOut) {
+                    animation()
+                } completion: { _ in
+                    completion()
+                }
             }
         }
     }

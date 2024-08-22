@@ -214,7 +214,7 @@ public class MediaAssetWriter {
             } completionHandler: { success, error in
                 print("save media result: \(success) error: \(String(describing: error))")
                 
-                if deleteOnComplete {
+                if success && deleteOnComplete {
                     if let processedURL = processedURL {
                         try? FileManager.default.removeItem(at: processedURL.absoluteURL)
                     }
@@ -318,7 +318,7 @@ public class MediaAssetWriter {
             } completionHandler: { success, error in
                 LibLogger.libDefault.log("save media result: \(success) error: \(String(describing: error))")
                 
-                if deleteOnComplete {
+                if success && deleteOnComplete {
                     if let rawURL = rawURL {
                         try? FileManager.default.removeItem(at: rawURL.absoluteURL)
                     }
@@ -362,7 +362,7 @@ public class MediaAssetWriter {
             } completionHandler: { success, error in
                 LibLogger.libDefault.log("save media result: \(success) error: \(String(describing: error)), deleteOnComplete: \(deleteOnComplete)")
                 
-                if deleteOnComplete {
+                if success && deleteOnComplete {
                     try? FileManager.default.removeItem(at: file.absoluteURL)
                 }
                 
@@ -429,7 +429,7 @@ public class MediaAssetWriter {
                             LibLogger.libDefault.error("failed to perform changed for PHAsset, error: \(error)")
                         }
                         
-                        if deleteOnComplete {
+                        if success && deleteOnComplete {
                             try? FileManager.default.removeItem(at: editedFileURL)
                         }
                         continuation.resume(returning: success)

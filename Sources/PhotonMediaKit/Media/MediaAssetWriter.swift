@@ -221,7 +221,7 @@ public class MediaAssetWriter {
                     try? FileManager.default.removeItem(at: rawURL.absoluteURL)
                 }
                 
-                continuation.resume(returning: placeholder?.localIdentifier)
+                continuation.resume(returning: success ? placeholder?.localIdentifier : nil)
             }
         }
     }
@@ -334,7 +334,7 @@ public class MediaAssetWriter {
                     }
                 }
                 
-                continuation.resume(returning: placeholder?.localIdentifier)
+                continuation.resume(returning: success ? placeholder?.localIdentifier : nil)
             }
         }
     }

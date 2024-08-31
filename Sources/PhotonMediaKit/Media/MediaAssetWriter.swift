@@ -191,7 +191,7 @@ public class MediaAssetWriter {
                 creationRequest.location = location
                 
                 let options = PHAssetResourceCreationOptions()
-                options.shouldMoveFile = deleteOnComplete
+                options.shouldMoveFile = false
                 creationRequest.addResource(
                     with: .photo,
                     fileURL: rawURL,
@@ -200,7 +200,7 @@ public class MediaAssetWriter {
                 
                 if let processedURL = processedURL {
                     let options = PHAssetResourceCreationOptions()
-                    options.shouldMoveFile = deleteOnComplete
+                    options.shouldMoveFile = false
                     creationRequest.addResource(
                         with: .alternatePhoto,
                         fileURL: processedURL,
@@ -276,7 +276,7 @@ public class MediaAssetWriter {
                 creationRequest.location = location
                 
                 let options = PHAssetResourceCreationOptions()
-                options.shouldMoveFile = deleteOnComplete
+                options.shouldMoveFile = false
                 creationRequest.addResource(
                     with: .photo,
                     fileURL: processedURL,
@@ -285,7 +285,7 @@ public class MediaAssetWriter {
                 
                 if let rawURL = rawURL {
                     let options = PHAssetResourceCreationOptions()
-                    options.shouldMoveFile = deleteOnComplete
+                    options.shouldMoveFile = false
                     creationRequest.addResource(
                         with: .alternatePhoto,
                         fileURL: rawURL,
@@ -295,7 +295,7 @@ public class MediaAssetWriter {
                 
                 if let livePhotoMovieURL = livePhotoMovieURL {
                     let options = PHAssetResourceCreationOptions()
-                    options.shouldMoveFile = deleteOnComplete
+                    options.shouldMoveFile = false
                     creationRequest.addResource(with: .pairedVideo, fileURL: livePhotoMovieURL, options: options)
                 }
                 

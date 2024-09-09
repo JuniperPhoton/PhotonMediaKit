@@ -189,10 +189,16 @@ public actor MediaAssetLoader {
         case .thumbnail:
             return await fetchThumbnailUIImage(phAsset: phAsset)
         case .full:
-            return await fetchFullUIImage(phAsset: phAsset, version: version, prefersHighDynamicRange: prefersHighDynamicRange)
+            return await fetchFullUIImage(
+                phAsset: phAsset,
+                version: version,
+                prefersHighDynamicRange: prefersHighDynamicRange
+            )
         case .size(w: let w, h: let h):
-            return await fetchThumbnailUIImage(phAsset: phAsset,
-                                               size: CGSize(width: w, height: h))
+            return await fetchThumbnailUIImage(
+                phAsset: phAsset,
+                size: CGSize(width: w, height: h)
+            )
         }
     }
     
@@ -200,6 +206,7 @@ public actor MediaAssetLoader {
     @available(iOS 15.0, *)
     public func fetchThumbnailUIImage(
         phAsset: PHAsset,
+        version: MediaAssetVersion = .current,
         size: CGSize = CGSize(width: 400, height: 400)
     ) async -> UIImage? {
         return await withCheckedContinuation { continuation in
@@ -208,9 +215,14 @@ public actor MediaAssetLoader {
             let o = PHImageRequestOptions()
             o.isNetworkAccessAllowed = true
             o.isSynchronous = true
+            o.version = version.getPHImageRequestOptionsVersion()
             
-            let id = cacheManager.requestImage(for: phAsset, targetSize: size,
-                                               contentMode: .aspectFit, options: o) { uiImage, map in
+            let id = cacheManager.requestImage(
+                for: phAsset,
+                targetSize: size,
+                contentMode: .aspectFit,
+                options: o
+            ) { uiImage, map in
                 continuation.resume(returning: uiImage)
             }
             
@@ -471,7 +483,7 @@ public actor MediaAssetLoader {
     }
     
     @available(iOS 15.0, macOS 12.0, *)
-    public func fetchPhoto(itemIdentifier: String) async -> PHAsset? {
+    public func fetchPHAsset(itemIdentifier: String) async -> PHAsset? {
         return await fetchPhotosByCollection(
             dateRange: Date.distantPast...Date.distantFuture,
             collection: nil,
@@ -480,6 +492,12 @@ public actor MediaAssetLoader {
             options.fetchLimit = 1
             options.predicate = NSPredicate(format: "localIdentifier == %@", itemIdentifier)
         }?.result?.firstObject
+    }
+    
+    @available(*, deprecated, renamed: "fetchPHAsset", message: "Renamed to fetchPHAsset")
+    @available(iOS 15.0, macOS 12.0, *)
+    public func fetchPhoto(itemIdentifier: String) async -> PHAsset? {
+        return await fetchPHAsset(itemIdentifier: itemIdentifier)
     }
     
     @available(iOS 15.0, macOS 12.0, *)

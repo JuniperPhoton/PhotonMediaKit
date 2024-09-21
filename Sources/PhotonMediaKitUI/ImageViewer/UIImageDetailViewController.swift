@@ -38,11 +38,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         return button
     }()
     
-    private lazy var livePhotoView: PHLivePhotoView = {
-        let view = PHLivePhotoView()
-        view.delegate = self
-        return view
-    }()
+    private var livePhotoView: PHLivePhotoView? = nil
     
     var asset: AssetProvider? = nil
     var onZoomChanged: ((ClosedRange<CGFloat>, CGFloat) -> Void)? = nil
@@ -128,7 +124,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         // Note that at this point, self.view's bounds is not updated yet.
         self.scrollView.frame = CGRect(x: 0, y: 0, width: size.width, height: size.height)
         
-        if livePhotoView.superview != nil {
+        if let livePhotoView = livePhotoView, livePhotoView.superview != nil {
             layoutLivePhotoView()
         }
     }
@@ -181,10 +177,14 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     }
     
     private func playLivePhotoView(playbackStyle: PHLivePhotoViewPlaybackStyle) {
-        let livePhotoView = livePhotoView
+        guard let livePhotoView = livePhotoView else {
+            return
+        }
+        
         if livePhotoView.superview == nil {
             return
         }
+        
         livePhotoView.startPlayback(with: playbackStyle)
     }
     
@@ -193,7 +193,11 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             return
         }
         
-        let livePhotoView = livePhotoView
+        tryInitializeLivePhotoView()
+        
+        guard let livePhotoView = livePhotoView else {
+            return
+        }
         
         if livePhotoView.superview == nil {
             livePhotoView.livePhoto = photo
@@ -208,6 +212,10 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     }
     
     private func layoutLivePhotoView() {
+        guard let livePhotoView = livePhotoView else {
+            return
+        }
+        
         guard let livePhoto = livePhotoView.livePhoto else {
             return
         }
@@ -222,8 +230,20 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         livePhotoView.frame = fitRect
     }
     
+    @MainActor
+    private func tryInitializeLivePhotoView() {
+        if livePhotoView == nil {
+            let livePhotoView = PHLivePhotoView()
+            livePhotoView.delegate = self
+            self.livePhotoView = livePhotoView
+        }
+    }
+    
     private func hideLivePhotoView() {
-        let livePhotoView = livePhotoView
+        guard let livePhotoView = livePhotoView else {
+            return
+        }
+        
         if livePhotoView.superview != nil {
             livePhotoView.stopPlayback()
             livePhotoView.removeFromSuperview()

@@ -313,36 +313,6 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         }
     }
     
-    func loadImageProgressively() {
-        guard let asset = asset else {
-            return
-        }
-        if self.scrollView.subviews.count > 0 {
-            return
-        }
-        
-        loadTask = Task {
-            self.scrollView.alpha = 0.0
-            
-            // While we displaying thumbnail, we start loading the full-size image at the same time.
-            // This will help showing the full-size image more quickly
-            async let fullSizeImageTask = preloadFullSizeImage(assetRes: asset, version: .current)
-            
-            await loadThenDisplayImage(assetRes: asset,
-                                       option: .size(w: currentViewSize.width, h: currentViewSize.height), version: .current)
-            UIView.animate(withDuration: 0.2, delay: 0, options: .curveEaseOut) {
-                self.scrollView.alpha = 1.0
-            }
-            
-            if let fullSizeImage = await fullSizeImageTask {
-                displayImage(fullSizeImage: fullSizeImage, enableZoom: true)
-                configureForMediaType()
-            }
-            
-            loadTask = nil
-        }
-    }
-    
     private func loadPlaceholderImage() {
         guard let asset = asset else {
             return

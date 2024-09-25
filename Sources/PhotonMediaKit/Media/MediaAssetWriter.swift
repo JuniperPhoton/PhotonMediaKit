@@ -512,6 +512,17 @@ public class MediaAssetWriter {
         }
     }
     
+    public func unfavorite(asset: PHAsset) async -> Bool {
+        return await withCheckedContinuation { continuation in
+            PHPhotoLibrary.shared().performChanges {
+                let request = PHAssetChangeRequest(for: asset)
+                request.isFavorite = false
+            } completionHandler: { success, error in
+                continuation.resume(returning: success)
+            }
+        }
+    }
+    
     public func createTempFileToSave(rootDir: URL? = getCacheDir(), originalFilename: String, utType: UTType) -> URL? {
         guard let extensions = utType.preferredFilenameExtension else {
             print("error on getting preferredFilenameExtension")

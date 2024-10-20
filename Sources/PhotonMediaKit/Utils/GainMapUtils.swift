@@ -28,7 +28,53 @@ public struct GainMapAuxiliaryImageResult {
     }
 }
 
-public struct GainMapInfo {
+/// The dictionary representation of the gain map info and its type.
+public struct GainMapInfoDictionaryWithType {
+    public let dictionary: CFDictionary
+    public let type: GainMapType
+    
+    public init(_ dictionary: CFDictionary, _ type: GainMapType) {
+        self.dictionary = dictionary
+        self.type = type
+    }
+    
+    public func replacing(_ dictionary: CFDictionary) -> GainMapInfoDictionaryWithType {
+        return GainMapInfoDictionaryWithType(dictionary, self.type)
+    }
+    
+    public func replacing(_ dictionary: Dictionary<CFString, Any>) -> GainMapInfoDictionaryWithType {
+        return GainMapInfoDictionaryWithType(dictionary as CFDictionary, self.type)
+    }
+}
+
+public enum GainMapType {
+    /// The new standardized ISO gain map that supposed to be supported by various platforms.
+    case isoGainMap
+    
+    /// Thed old Apple Gain Map originating from iPhone 12.
+    case hdrGainMap
+    
+    public var auxiliarayType: AuxiliaryDataType {
+        switch self {
+        case .isoGainMap:
+            return .isoGainMap
+        case .hdrGainMap:
+            return .hdrGainMap
+        }
+    }
+    
+    /// Get the newest Gain Map type supported by the current platform.
+    /// If you want to generate the gain map image and write it to the output file, please make sure to get the gain map type by this method.
+    public static func getNewestSupportedType() -> GainMapType {
+        if #available(iOS 18.0, *) {
+            return .isoGainMap
+        } else {
+            return .hdrGainMap
+        }
+    }
+}
+
+public struct GainMapBitmapInfo {
     /// The width of the gain map image.
     public let width: Int
     
@@ -50,6 +96,9 @@ public struct GainMapInfo {
     
     /// The image bitmap data of the gain map image.
     public let data: Data
+    
+    /// The type of the gain map.
+    public let type: GainMapType
     
     /// Convenient way to create the ``CIImage`` of this gain map.
     public func toCIImage(applyOrientation: Bool = false) -> CIImage? {
@@ -76,7 +125,9 @@ public class GainMapUtils {
     public static let keyOrientation = "Orientation"
     
     private static var keyHDRGainMapHeadroom = "HDRGainMapHeadroom"
+    private static var keyAlternateHeadroom = "AlternateHeadroom"
     private static var keyHDRGainMapVersion = "HDRGainMapVersion"
+    private static var keyVersion = "Version"
     
     public static let shared = GainMapUtils()
     
@@ -93,7 +144,7 @@ public class GainMapUtils {
     /// Extract the HDR gain map information from the data and return ``HDRGainMapInfo``.
     ///
     /// See more: https://developer.apple.com/documentation/appkit/images_and_pdf/applying_apple_hdr_effect_to_your_photos
-    public func extractHDRGainMap(url: URL) async -> GainMapInfo? {
+    public func extractHDRGainMap(url: URL, type: GainMapType) async -> GainMapBitmapInfo? {
         let _ = url.startAccessingSecurityScopedResource()
         defer {
             url.stopAccessingSecurityScopedResource()
@@ -103,12 +154,29 @@ public class GainMapUtils {
             return nil
         }
         
-        return await extractGainMap(data: data)
+        return await extractGainMap(data: data, type: type)
     }
     
     /// Extract the HDR gain map original data and parse as ``CFDictionary``.
-    public func extractGainMapDictionary(data: Data) async -> CFDictionary? {
-        return await CGImageIO.shared.extractAuxiliaryDictionary(data: data, type: .hdrGainMap)
+    public func extractGainMapDictionary(data: Data, type: GainMapType) async -> GainMapInfoDictionaryWithType? {
+        if let result = await CGImageIO.shared.extractAuxiliaryDictionary(data: data, type: type.auxiliarayType) {
+            return GainMapInfoDictionaryWithType(result, type)
+        }
+        
+        return nil
+    }
+    
+    /// Extract the HDR gain map original data and parse as ``CFDictionary``.
+    public func extractGainMapDictionaryWithFallback(data: Data) async -> GainMapInfoDictionaryWithType? {
+        if let result = await CGImageIO.shared.extractAuxiliaryDictionary(data: data, type: .isoGainMap) {
+            return GainMapInfoDictionaryWithType(result, .isoGainMap)
+        }
+        
+        if let result = await CGImageIO.shared.extractAuxiliaryDictionary(data: data, type: .hdrGainMap) {
+            return GainMapInfoDictionaryWithType(result, .hdrGainMap)
+        }
+        
+        return nil
     }
     
     /// Extract the gain map size.
@@ -129,17 +197,28 @@ public class GainMapUtils {
     // Extract the HDR gain map information from the data and return ``HDRGainMapInfo``.
     ///
     /// See more: https://developer.apple.com/documentation/appkit/images_and_pdf/applying_apple_hdr_effect_to_your_photos
-    public func extractGainMap(data: Data) async -> GainMapInfo? {
-        guard let auxiliaryMap = await extractGainMapDictionary(data: data) as? Dictionary<CFString, Any> else {
+    public func extractGainMap(data: Data, type: GainMapType) async -> GainMapBitmapInfo? {
+        guard let result = await extractGainMapDictionary(data: data, type: type) else {
             return nil
         }
-        return await extractGainMap(auxiliaryMap: auxiliaryMap)
+        guard let dic = result.dictionary as? Dictionary<CFString, Any> else {
+            return nil
+        }
+        return await extractGainMap(auxiliaryMap: dic, type: result.type)
+    }
+    
+    public func extractGainMapWithFallback(data: Data) async -> GainMapBitmapInfo? {
+        if let result = await extractGainMap(data: data, type: .isoGainMap) {
+            return result
+        }
+        
+        return await extractGainMap(data: data, type: .hdrGainMap)
     }
     
     /// Extract the HDR gain map information from the data and return ``HDRGainMapInfo``.
     ///
     /// See more: https://developer.apple.com/documentation/appkit/images_and_pdf/applying_apple_hdr_effect_to_your_photos
-    public func extractGainMap(auxiliaryMap: Dictionary<CFString, Any>) async -> GainMapInfo? {
+    public func extractGainMap(auxiliaryMap: Dictionary<CFString, Any>, type: GainMapType) async -> GainMapBitmapInfo? {
         if let desc = auxiliaryMap[kCGImageAuxiliaryDataInfoDataDescription] as? Dictionary<String, Any>,
            let metadata = auxiliaryMap[kCGImageAuxiliaryDataInfoMetadata],
            let data = auxiliaryMap[kCGImageAuxiliaryDataInfoData] as? Data {
@@ -165,11 +244,15 @@ public class GainMapUtils {
                     let name = CGImageMetadataTagCopyName(cfTag) as? String
                     let value = CGImageMetadataTagCopyValue(cfTag)
                     
-                    if name == GainMapUtils.keyHDRGainMapHeadroom, let value = value as? String, let float = Float(value) {
-                        gainMapHeadroom = CGFloat(float)
+                    debugPrint("extractHDRGainMap, tag name: \(String(describing: name)), value: \(String(describing: value))")
+                    
+                    if let value = value as? String, let float = Float(value) {
+                        if name == GainMapUtils.keyHDRGainMapHeadroom || name == GainMapUtils.keyAlternateHeadroom {
+                            gainMapHeadroom = CGFloat(float)
+                        }
                     }
                     
-                    if name == GainMapUtils.keyHDRGainMapVersion {
+                    if name == GainMapUtils.keyHDRGainMapVersion || name == GainMapUtils.keyVersion {
                         valid = true
                     }
                 }
@@ -182,14 +265,15 @@ public class GainMapUtils {
             debugPrint("extractHDRGainMap desc is \(desc)")
             debugPrint("extractHDRGainMap metadata is \(metadata)")
             
-            return GainMapInfo(
+            return GainMapBitmapInfo(
                 width: width,
                 height: height,
                 bytesPerRow: bytesPerRow,
                 pixelFormat: pixelFormat,
                 orientation: cgOrientation,
                 headroom: gainMapHeadroom,
-                data: data
+                data: data,
+                type: type
             )
         }
         
@@ -310,6 +394,29 @@ public class GainMapUtils {
             
             return GainMapAuxiliaryImageResult(ciImage: transformed, desc: mutableDesc)
         }
+    }
+    
+    /// Get the CIImage of the auxiliary gain map data if exists.
+    public func getGainMapImage(auxiliaryMap: Dictionary<CFString, Any>) async -> CIImage? {
+        guard var mutableDesc = auxiliaryMap[kCGImageAuxiliaryDataInfoDataDescription] as? Dictionary<String, Any> else {
+            return nil
+        }
+        
+        guard let originalWidth = mutableDesc[GainMapUtils.keyWidth] as? Int,
+              let originalHeight = mutableDesc[GainMapUtils.keyHeight] as? Int,
+              let bytesPerRow = mutableDesc[GainMapUtils.keyBytesPerRow] as? Int else {
+            return nil
+        }
+        
+        guard let originalBitmapData = auxiliaryMap[kCGImageAuxiliaryDataInfoData] as? Data else {
+            return nil
+        }
+        
+        return CIImage.createFrom(
+            bitmapData: originalBitmapData,
+            bytesPerRow: bytesPerRow,
+            size: CGSize(width: originalWidth, height: originalHeight)
+        )
     }
     
     /// Get the CIImage of the auxiliary gain map data, perform the custom transformation and return the result.

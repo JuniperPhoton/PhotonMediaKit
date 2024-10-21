@@ -21,7 +21,7 @@ public enum AuxiliaryDataType: CaseIterable {
     public var cgImageKey: CFString {
         switch self {
         case .isoGainMap:
-            if #available(iOS 18.0, *) {
+            if #available(iOS 18.0, macOS 15.0, *) {
                 return kCGImageAuxiliaryDataTypeISOGainMap
             } else {
                 return "kCGImageAuxiliaryDataTypeISOGainMap" as CFString

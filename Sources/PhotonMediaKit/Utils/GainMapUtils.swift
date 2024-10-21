@@ -66,7 +66,7 @@ public enum GainMapType {
     /// Get the newest Gain Map type supported by the current platform.
     /// If you want to generate the gain map image and write it to the output file, please make sure to get the gain map type by this method.
     public static func getNewestSupportedType() -> GainMapType {
-        if #available(iOS 18.0, *) {
+        if #available(iOS 18.0, macOS 15.0, *) {
             return .isoGainMap
         } else {
             return .hdrGainMap

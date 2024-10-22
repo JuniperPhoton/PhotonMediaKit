@@ -60,6 +60,29 @@ public actor MediaAssetLoader {
         }
     }
     
+    public enum FetchSizeOption {
+        case none
+        case atLeastOneGreaterThan(width: CGFloat, height: CGFloat)
+        case bothGreaterThan(width: CGFloat, height: CGFloat)
+        
+        public static var greaterThan1080P: FetchSizeOption {
+            FetchSizeOption.atLeastOneGreaterThan(width: 1920, height: 1920)
+        }
+        
+        public func asNSPredicate() -> NSPredicate {
+            let sizePredicate: NSPredicate
+            switch self {
+            case .none:
+                sizePredicate = NSPredicate(format: "pixelWidth > 0 && pixelHeight > 0")
+            case .atLeastOneGreaterThan(let width, let height):
+                sizePredicate = NSPredicate(format: "pixelWidth > \(width) || pixelHeight > \(height)")
+            case .bothGreaterThan(let width, let height):
+                sizePredicate = NSPredicate(format: "pixelWidth > \(width) && pixelHeight > \(height)")
+            }
+            return sizePredicate
+        }
+    }
+    
     public struct FetchError: Error {
         let message: String
     }
@@ -418,6 +441,7 @@ public actor MediaAssetLoader {
         dateRange: ClosedRange<Date>,
         filterOptions: MediaFilterOptions,
         sortOption: FetchSortOption = .creationDate(ascending: false),
+        sizeOption: FetchSizeOption = FetchSizeOption.greaterThan1080P,
         configure: ((PHFetchOptions) -> Void)? = nil
     ) async -> PHFetchTraceableResult? {
         let fromDate = dateRange.lowerBound
@@ -449,13 +473,11 @@ public actor MediaAssetLoader {
             argumentArray: [fromDate, toDate]
         )
         
-        let sizePredicate = NSPredicate(format: "pixelWidth > 1920 || pixelHeight > 1920")
-        
         let allVideosOptions = PHFetchOptions()
         allVideosOptions.sortDescriptors = sortOption.asSortDescriptors()
         allVideosOptions.predicate = NSCompoundPredicate(
             type: .and,
-            subpredicates: [favoritesPredicate, creationPredicate, sizePredicate].compactMap { $0 }
+            subpredicates: [favoritesPredicate, creationPredicate, sizeOption.asNSPredicate()].compactMap { $0 }
         )
         
         if let configure = configure {
@@ -485,29 +507,43 @@ public actor MediaAssetLoader {
     @available(iOS 15.0, macOS 12.0, *)
     public func fetchPHAsset(
         itemIdentifier: String,
-        collection: PHAssetCollection? = nil
+        collection: PHAssetCollection? = nil,
+        predicates: [NSPredicate] = []
     ) async -> PHAsset? {
+        var compoundPredicates = predicates
+        compoundPredicates.append(NSPredicate(format: "localIdentifier == %@", itemIdentifier))
+        
         return await fetchPhotosByCollection(
             dateRange: Date.distantPast...Date.distantFuture,
             collection: collection,
             loadAssetResourcesInPlaceTypes: []
         ) { options in
             options.fetchLimit = 1
-            options.predicate = NSPredicate(format: "localIdentifier == %@", itemIdentifier)
+            options.predicate = NSCompoundPredicate(
+                type: .and,
+                subpredicates: compoundPredicates
+            )
         }?.result?.firstObject
     }
     
     @available(iOS 15.0, macOS 12.0, *)
     public func fetchPHAssets(
         itemIdentifiers: [String],
-        collection: PHAssetCollection? = nil
+        collection: PHAssetCollection? = nil,
+        predicates: [NSPredicate] = []
     ) async -> PHFetchTraceableResult? {
+        var compoundPredicates = predicates
+        compoundPredicates.append(NSPredicate(format: "localIdentifier in %@", itemIdentifiers))
+        
         return await fetchPhotosByCollection(
             dateRange: Date.distantPast...Date.distantFuture,
             collection: collection,
             loadAssetResourcesInPlaceTypes: []
         ) { options in
-            options.predicate = NSPredicate(format: "localIdentifier in %@", itemIdentifiers)
+            options.predicate = NSCompoundPredicate(
+                type: .and,
+                subpredicates: compoundPredicates
+            )
         }
     }
     

@@ -483,10 +483,13 @@ public actor MediaAssetLoader {
     }
     
     @available(iOS 15.0, macOS 12.0, *)
-    public func fetchPHAsset(itemIdentifier: String) async -> PHAsset? {
+    public func fetchPHAsset(
+        itemIdentifier: String,
+        collection: PHAssetCollection? = nil
+    ) async -> PHAsset? {
         return await fetchPhotosByCollection(
             dateRange: Date.distantPast...Date.distantFuture,
-            collection: nil,
+            collection: collection,
             loadAssetResourcesInPlaceTypes: []
         ) { options in
             options.fetchLimit = 1
@@ -494,10 +497,18 @@ public actor MediaAssetLoader {
         }?.result?.firstObject
     }
     
-    @available(*, deprecated, renamed: "fetchPHAsset", message: "Renamed to fetchPHAsset")
     @available(iOS 15.0, macOS 12.0, *)
-    public func fetchPhoto(itemIdentifier: String) async -> PHAsset? {
-        return await fetchPHAsset(itemIdentifier: itemIdentifier)
+    public func fetchPHAssets(
+        itemIdentifiers: [String],
+        collection: PHAssetCollection? = nil
+    ) async -> PHFetchTraceableResult? {
+        return await fetchPhotosByCollection(
+            dateRange: Date.distantPast...Date.distantFuture,
+            collection: collection,
+            loadAssetResourcesInPlaceTypes: []
+        ) { options in
+            options.predicate = NSPredicate(format: "localIdentifier in %@", itemIdentifiers)
+        }
     }
     
     @available(iOS 15.0, macOS 12.0, *)

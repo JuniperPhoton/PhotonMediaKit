@@ -270,7 +270,7 @@ public actor MediaAssetLoader {
             o.isSynchronous = true
             o.version = version.getPHImageRequestOptionsVersion()
             
-            let id = cacheManager.requestImageDataAndOrientation(for: phAsset, options: o) { data, _, _, _ in
+            let id = cacheManager.requestImageDataAndOrientation(for: phAsset, options: o) { data, _, _, metadata in
                 guard let data = data else {
                     continuation.resume(returning: nil)
                     return
@@ -281,7 +281,10 @@ public actor MediaAssetLoader {
                     var config = UIImageReader.Configuration()
                     config.prefersHighDynamicRange = prefersHighDynamicRange
                     config.preparesImagesForDisplay = true
-                    config.preferredThumbnailSize = CGSize(width: 8064, height: 8064)
+                    
+                    let width = phAsset.pixelWidth
+                    let height = phAsset.pixelHeight
+                    config.preferredThumbnailSize = CGSize(width: width, height: height)
                     
                     let reader = UIImageReader(configuration: config)
                     let uiImage = reader.image(data: data)

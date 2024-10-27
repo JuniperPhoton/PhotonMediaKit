@@ -370,17 +370,7 @@ public class UIImageViewer<
         }
     }
     
-    private func prepareToDismiss() {
-        if let uiImageScrollView = self.currentViewController?.view.subviews.first(where: { view in
-            view is UIImageScrollView
-        }) as? UIImageScrollView {
-            uiImageScrollView.prepareToDismiss()
-        }
-    }
-    
     private func animateToDismiss(targetView: UIView) {
-        prepareToDismiss()
-        
         UIView.animate(withDuration: 0.2, delay: 0, options: .curveEaseOut) {
             targetView.transform = CGAffineTransform(translationX: 0, y: self.view.frame.height)
             self.view.alpha = 0.0
@@ -419,8 +409,6 @@ public class UIImageViewer<
         maskLayer.frame = originalMaskFrame
         maskLayer.backgroundColor = UIColor.white.cgColor
         targetView.layer.mask = maskLayer
-        
-        prepareToDismiss()
         
         UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseOut) {
             targetView.transform = CGAffineTransform(translationX: offsetX, y: offsetY)

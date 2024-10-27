@@ -108,10 +108,6 @@ class UIImageScrollView: UIScrollView {
         self.lastSize = current
     }
     
-    func prepareToDismiss() {
-        self.zoomView?.preferredImageDynamicRange = .standard
-    }
-    
     func adjustFrameToCenter() {
         guard let unwrappedZoomView = zoomView else {
             return

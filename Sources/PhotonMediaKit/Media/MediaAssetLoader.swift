@@ -246,7 +246,11 @@ public actor MediaAssetLoader {
                 contentMode: .aspectFit,
                 options: o
             ) { uiImage, map in
-                continuation.resume(returning: uiImage)
+                if Task.isCancelled {
+                    continuation.resume(returning: nil)
+                } else {
+                    continuation.resume(returning: uiImage)
+                }
             }
             
             if Task.isCancelled {
@@ -289,9 +293,17 @@ public actor MediaAssetLoader {
                     let reader = UIImageReader(configuration: config)
                     let uiImage = reader.image(data: data)
                     
-                    continuation.resume(returning: uiImage)
+                    if Task.isCancelled {
+                        continuation.resume(returning: nil)
+                    } else {
+                        continuation.resume(returning: uiImage)
+                    }
                 } else {
-                    continuation.resume(returning: UIImage(data: data))
+                    if Task.isCancelled {
+                        continuation.resume(returning: nil)
+                    } else {
+                        continuation.resume(returning: UIImage(data: data))
+                    }
                 }
             }
             
@@ -406,15 +418,25 @@ public actor MediaAssetLoader {
                 }
             }
             
-            cacheManager.requestImage(for: phAsset,
-                                      targetSize: size,
-                                      contentMode: .aspectFit,
-                                      options: o) { platformImage, data in
+            let id = cacheManager.requestImage(
+                for: phAsset,
+                targetSize: size,
+                contentMode: .aspectFit,
+                options: o
+            ) { platformImage, data in
+                if Task.isCancelled {
+                    continuation.resume(returning: nil)
+                } else {
 #if os(macOS)
-                continuation.resume(returning: platformImage?.cgImage(forProposedRect: nil, context: nil, hints: nil))
+                    continuation.resume(returning: platformImage?.cgImage(forProposedRect: nil, context: nil, hints: nil))
 #else
-                continuation.resume(returning: platformImage?.cgImage)
+                    continuation.resume(returning: platformImage?.cgImage)
 #endif
+                }
+            }
+            
+            if Task.isCancelled {
+                cacheManager.cancelImageRequest(id)
             }
         }
     }

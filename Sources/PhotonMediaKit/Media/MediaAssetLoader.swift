@@ -169,7 +169,7 @@ public actor MediaAssetLoader {
             
             let o = PHLivePhotoRequestOptions()
             o.isNetworkAccessAllowed = allowFromNetwork
-
+            
             if allowFromNetwork, let onProgressChanged = onProgressChanged {
                 o.progressHandler = { progress, error, obj, map in
                     onProgressChanged(progress)

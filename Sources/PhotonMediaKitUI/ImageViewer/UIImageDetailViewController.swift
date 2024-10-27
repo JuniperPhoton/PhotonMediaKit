@@ -365,7 +365,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     private func preloadFullSizeImage(assetRes: AssetProvider, version: MediaAssetVersion) async -> UIImage? {
         return await MediaAssetLoader().fetchUIImage(
             phAsset: assetRes.phAssetRes.phAsset,
-            option: .full,
+            option: .size(w: 8064, h: 8064), // Don't use .full, which has performance issue.
             version: version,
             prefersHighDynamicRange: prefersHighDynamicRange
         )

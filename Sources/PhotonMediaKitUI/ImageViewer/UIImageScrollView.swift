@@ -202,11 +202,15 @@ class UIImageScrollView: UIScrollView {
     
     // MARK: - Display image
     
-    func display(image: UIImage) {
-        zoomView?.removeFromSuperview()
+    func display(image: UIImage, animateChanges: Bool) {
+        let oldZoomView = zoomView
         
         guard let zoomView = imageScrollViewDelegate?.provideContentView(uiImage: image) else {
             return
+        }
+        
+        if !animateChanges {
+            oldZoomView?.removeFromSuperview()
         }
         
         addSubview(zoomView)
@@ -224,6 +228,16 @@ class UIImageScrollView: UIScrollView {
         self.zoomView = zoomView
         
         configureImageForSize(image.size)
+        
+        if animateChanges {
+            zoomView.alpha = 0.0
+            
+            UIView.animate(withDuration: 0.2, delay: 0) {
+                zoomView.alpha = 1.0
+            } completion: { success in
+                oldZoomView?.removeFromSuperview()
+            }
+        }
     }
     
     func reconfigureImageSize() {
@@ -322,7 +336,7 @@ class UIImageScrollView: UIScrollView {
     
     func refresh() {
         if let image = zoomView?.image {
-            display(image: image)
+            display(image: image, animateChanges: false)
         }
     }
     

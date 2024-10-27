@@ -307,7 +307,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             
             // By this point, the transition animation should be ended. Then we load the full size image.
             if let fullSizeImage = await fullSizeImageTask {
-                displayImage(fullSizeImage: fullSizeImage, enableZoom: !asset.phAssetRes.isVideo)
+                displayFullSizeImage(fullSizeImage: fullSizeImage, enableZoom: !asset.phAssetRes.isVideo)
                 configureForMediaType()
             }
         }
@@ -365,7 +365,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     private func preloadFullSizeImage(assetRes: AssetProvider, version: MediaAssetVersion) async -> UIImage? {
         return await MediaAssetLoader().fetchUIImage(
             phAsset: assetRes.phAssetRes.phAsset,
-            option: .size(w: 8064, h: 8064), // Don't use .full, which has performance issue.
+            option: .full,
             version: version,
             prefersHighDynamicRange: prefersHighDynamicRange
         )
@@ -386,7 +386,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             return
         }
         
-        displayImage(
+        displayFullSizeImage(
             fullSizeImage: fullSizeImage,
             enableZoom: option == MediaAssetLoader.FetchOption.full && !assetRes.phAssetRes.isVideo
         )
@@ -473,8 +473,12 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     }
     
     @MainActor
-    private func displayImage(fullSizeImage: UIImage, enableZoom: Bool) {
-        scrollView.display(image: fullSizeImage)
+    private func displayFullSizeImage(fullSizeImage: UIImage, enableZoom: Bool) {
+        guard let asset = asset?.phAssetRes.phAsset else {
+            return
+        }
+        
+        scrollView.display(image: fullSizeImage, animateChanges: !asset.isLivePhotoSubType())
         scrollView.isUserInteractionEnabled = enableZoom
         loadingView.removeFromSuperview()
         tryShowLivePhotoView(playbackStyle: nil)
@@ -483,7 +487,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     private func displayImageForTransition(uiImage: UIImage, enableZoom: Bool) async {
         return await withCheckedContinuation { continuation in
             if startFrame.isEmpty {
-                scrollView.display(image: uiImage)
+                scrollView.display(image: uiImage, animateChanges: false)
                 scrollView.isUserInteractionEnabled = enableZoom
                 scrollView.reconfigureImageSize()
                 continuation.resume()
@@ -496,7 +500,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
                 let originalTransform = scrollView.transform
                 scrollView.transform = originalTransform.translatedBy(x: startFrame.minX, y: startFrame.minY)
                 
-                scrollView.display(image: uiImage)
+                scrollView.display(image: uiImage, animateChanges: false)
                 scrollView.isUserInteractionEnabled = enableZoom
                 
                 let animation = {

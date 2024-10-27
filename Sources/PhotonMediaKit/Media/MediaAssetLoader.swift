@@ -271,8 +271,25 @@ public actor MediaAssetLoader {
             o.version = version.getPHImageRequestOptionsVersion()
             
             let id = cacheManager.requestImageDataAndOrientation(for: phAsset, options: o) { data, _, _, _ in
-                let image = UIImageReaderCompat(prefersHighDynamicRange: prefersHighDynamicRange).uiImage(data: data)
-                continuation.resume(returning: image)
+                guard let data = data else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                
+                // Not until iOS 18 the UIImageReader have resolved memory leak issue.
+                if #available(iOS 18.0, *) {
+                    var config = UIImageReader.Configuration()
+                    config.prefersHighDynamicRange = prefersHighDynamicRange
+                    config.preparesImagesForDisplay = true
+                    config.preferredThumbnailSize = CGSize(width: 8064, height: 8064)
+                    
+                    let reader = UIImageReader(configuration: config)
+                    let uiImage = reader.image(data: data)
+                    
+                    continuation.resume(returning: uiImage)
+                } else {
+                    continuation.resume(returning: UIImage(data: data))
+                }
             }
             
             if Task.isCancelled {

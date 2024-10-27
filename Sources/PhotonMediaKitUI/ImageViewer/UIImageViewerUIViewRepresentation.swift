@@ -57,10 +57,14 @@ public struct UIImageViewerUIViewRepresentation<AssetProvider: MediaAssetProvide
     }
     
     public func makeUIViewController(context: Context) -> UIImageViewer<AssetProvider, OrnamentProvider> {
+        let optionsDict = [UIPageViewController.OptionsKey.interPageSpacing: 20]
+        
         let controller = UIImageViewer<AssetProvider, OrnamentProvider>(
             transitionStyle: .scroll,
-            navigationOrientation: .horizontal
+            navigationOrientation: .horizontal,
+            options: optionsDict
         )
+        
         controller.setImages(self.images)
         controller.onRequestDismiss = onRequestDismiss
         controller.onRequestDismissRootController = onRequestDismissRootController

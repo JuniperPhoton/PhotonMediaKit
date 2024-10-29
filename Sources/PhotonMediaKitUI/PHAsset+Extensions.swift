@@ -16,7 +16,7 @@ public extension PHAsset {
     
     /// Check if this PHAsset has RAW resources.
     /// This method could take time. To get better performance, try cache the result.
-    func hasRAWResources() -> Bool {
+    func hasRAWResources() async -> Bool {
         let resources = PHAssetResource.assetResources(for: self)
         let rawRes = resources.first { res in
             if let utType = UTType(res.uniformTypeIdentifier) {

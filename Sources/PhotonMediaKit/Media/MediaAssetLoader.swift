@@ -29,6 +29,8 @@ public struct PHFetchTraceableResult {
 
 /// Use this class to help you fetch media from PhotoKit and load the data of the assets.
 public actor MediaAssetLoader {
+    public static let defaultThumbnailSize = CGSize(width: 400, height: 400)
+    
     public enum FetchOption: Equatable, CustomStringConvertible {
         case thumbnail
         case full
@@ -230,14 +232,16 @@ public actor MediaAssetLoader {
     public func fetchThumbnailUIImage(
         phAsset: PHAsset,
         version: MediaAssetVersion = .current,
-        size: CGSize = CGSize(width: 400, height: 400)
+        isNetworkAccessAllowed: Bool = false,
+        size: CGSize = MediaAssetLoader.defaultThumbnailSize
     ) async -> UIImage? {
         return await withCheckedContinuation { continuation in
             let cacheManager = PHCachingImageManager.default()
             
             let o = PHImageRequestOptions()
-            o.isNetworkAccessAllowed = true
+            o.isNetworkAccessAllowed = isNetworkAccessAllowed
             o.isSynchronous = true
+            o.resizeMode = .fast
             o.version = version.getPHImageRequestOptionsVersion()
             
             let id = cacheManager.requestImage(
@@ -245,7 +249,7 @@ public actor MediaAssetLoader {
                 targetSize: size,
                 contentMode: .aspectFit,
                 options: o
-            ) { uiImage, map in
+            ) { uiImage, _ in
                 if Task.isCancelled {
                     continuation.resume(returning: nil)
                 } else {
@@ -400,7 +404,7 @@ public actor MediaAssetLoader {
     
     public func fetchThumbnailCGImage(
         phAsset: PHAsset,
-        size: CGSize = CGSize(width: 400, height: 400),
+        size: CGSize = MediaAssetLoader.defaultThumbnailSize,
         isNetworkAccessAllowed: Bool = false,
         onProgressChanged: ((Double) -> Void)? = nil
     ) async -> CGImage? {

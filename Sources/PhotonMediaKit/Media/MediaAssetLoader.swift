@@ -284,6 +284,12 @@ public actor MediaAssetLoader {
                     return
                 }
                 
+                if Task.isCancelled {
+                    LibLogger.libDefault.warning("fetchFullUIImage, task cancelled")
+                    continuation.resume(returning: nil)
+                    return
+                }
+                
                 // Not until iOS 18 the UIImageReader have resolved memory leak issue.
                 if #available(iOS 18.0, *) {
                     var config = UIImageReader.Configuration()
@@ -298,12 +304,14 @@ public actor MediaAssetLoader {
                     let uiImage = reader.image(data: data)
                     
                     if Task.isCancelled {
+                        LibLogger.libDefault.warning("fetchFullUIImage, task cancelled")
                         continuation.resume(returning: nil)
                     } else {
                         continuation.resume(returning: uiImage)
                     }
                 } else {
                     if Task.isCancelled {
+                        LibLogger.libDefault.warning("fetchFullUIImage, task cancelled")
                         continuation.resume(returning: nil)
                     } else {
                         continuation.resume(returning: UIImage(data: data))
@@ -312,6 +320,7 @@ public actor MediaAssetLoader {
             }
             
             if Task.isCancelled {
+                LibLogger.libDefault.warning("fetchFullUIImage, task cancelled, about to cancelImageRequest")
                 cacheManager.cancelImageRequest(id)
             }
         }

@@ -286,7 +286,9 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             return
         }
         
-        Task {
+        loadTask = Task { [weak self] in
+            guard let self = self else { return }
+            
             let size = currentViewSize
             
             guard let thumbnailImage = await MediaAssetLoader().fetchUIImage(
@@ -298,6 +300,11 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
                 return
             }
             
+            if Task.isCancelled {
+                LibLogger.libDefault.warning("loadImageForTransition, task cancelled")
+                return
+            }
+            
             // While we displaying thumbnail image for transition, we start loading the full-size image at the same time.
             // This will help showing the full-size image more quickly
             async let fullSizeImageTask = preloadFullSizeImage(assetRes: asset, version: .current)
@@ -305,39 +312,16 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             // We use a thumbnail image as a placeholder during the transition
             await displayImageForTransition(uiImage: thumbnailImage, enableZoom: false)
             
+            if Task.isCancelled {
+                LibLogger.libDefault.warning("loadImageForTransition, task cancelled")
+                return
+            }
+            
             // By this point, the transition animation should be ended. Then we load the full size image.
             if let fullSizeImage = await fullSizeImageTask {
                 displayFullSizeImage(fullSizeImage: fullSizeImage, enableZoom: !asset.phAssetRes.isVideo)
                 configureForMediaType()
             }
-        }
-    }
-    
-    private func loadPlaceholderImage() {
-        guard let asset = asset else {
-            return
-        }
-        
-        loadTask?.cancel()
-        loadTask = Task {
-            await loadThenDisplayImage(
-                assetRes: asset,
-                option: .size(w: currentViewSize.width, h: currentViewSize.height),
-                version: .current
-            )
-            loadTask = nil
-        }
-    }
-    
-    private func loadFullImage() {
-        guard let asset = asset else {
-            return
-        }
-        
-        loadTask?.cancel()
-        loadTask = Task {
-            await loadThenDisplayImage(assetRes: asset, option: .full, version: .current)
-            loadTask = nil
         }
     }
     
@@ -485,7 +469,11 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     }
     
     private func displayImageForTransition(uiImage: UIImage, enableZoom: Bool) async {
-        return await withCheckedContinuation { continuation in
+        return await withCheckedContinuation { [weak self] continuation in
+            guard let self = self else { return }
+            
+            let scrollView = self.scrollView
+            
             if startFrame.isEmpty {
                 scrollView.display(image: uiImage, animateChanges: false)
                 scrollView.isUserInteractionEnabled = enableZoom
@@ -511,16 +499,16 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
                     let scaledX = currentFrame.width / aspectRatioFrame.width
                     let scaledY = currentFrame.height / aspectRatioFrame.height
                     
-                    self.scrollView.reconfigureImageSize()
+                    scrollView.reconfigureImageSize()
                     
                     let scale = min(scaledX, scaledY)
-                    self.scrollView.transform = originalTransform.translatedBy(x: x, y: y).scaledBy(x: scale, y: scale)
+                    scrollView.transform = originalTransform.translatedBy(x: x, y: y).scaledBy(x: scale, y: scale)
                 }
                 
                 let completion = {
-                    self.scrollView.transform = originalTransform
-                    self.scrollView.frame = self.view.bounds
-                    self.scrollView.reconfigureImageSize()
+                    scrollView.transform = originalTransform
+                    scrollView.frame = self.view.bounds
+                    scrollView.reconfigureImageSize()
                     
                     continuation.resume()
                 }

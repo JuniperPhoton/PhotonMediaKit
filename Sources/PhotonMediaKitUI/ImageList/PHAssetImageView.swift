@@ -1,6 +1,6 @@
 //
 //  File.swift
-//  
+//
 //
 //  Created by Photon Juniper on 2023/10/31.
 //
@@ -13,12 +13,18 @@ import PhotonMediaKit
 public struct PHAssetImageView: View {
     let asset: MediaAssetRes
     let contentMode: ContentMode
+    let version: MediaAssetVersion
     
     @State private var cgImage: CGImage? = nil
     
-    public init(asset: MediaAssetRes, contentMode: ContentMode = .fill) {
+    public init(
+        asset: MediaAssetRes,
+        contentMode: ContentMode = .fill,
+        version: MediaAssetVersion = .current
+    ) {
         self.asset = asset
         self.contentMode = contentMode
+        self.version = version
     }
     
     public var body: some View {
@@ -40,11 +46,11 @@ public struct PHAssetImageView: View {
             await loadImage()
         }.onDisappear {
             release()
-        }
+        }.animation(.default, value: cgImage)
     }
     
     private func loadImage() async {
-        self.cgImage = await MediaAssetLoader().fetchThumbnailCGImage(phAsset: asset.phAsset)
+        self.cgImage = await MediaAssetLoader().fetchThumbnailCGImage(phAsset: asset.phAsset, version: version)
     }
     
     private func release() {

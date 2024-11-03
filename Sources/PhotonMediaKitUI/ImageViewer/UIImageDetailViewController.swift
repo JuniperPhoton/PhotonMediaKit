@@ -46,7 +46,8 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     var startFrame: CGRect = .zero
     var isAnimating = false
     private(set) var prefersHighDynamicRange: Bool = false
-    
+    private(set) var version: MediaAssetVersion = .current
+
     private var loadTask: Task<(), Never>? = nil
     private var currentViewSize: CGSize = .zero
     private var originalScale: CGFloat = 1.0
@@ -68,6 +69,10 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     
     func setPrefersHighDynamicRange(_ prefersHighDynamicRange: Bool) {
         self.prefersHighDynamicRange = prefersHighDynamicRange
+    }
+    
+    func setVersion(_ version: MediaAssetVersion) {
+        self.version = version
     }
     
     override func viewDidLoad() {
@@ -153,7 +158,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
                 showLivePhotoView(photo: livePhoto, playbackStyle: playbackStyle)
             } else {
                 let options = PHLivePhotoRequestOptions()
-                options.version = .current
+                options.version = version.getPHImageRequestOptionsVersion()
                 options.deliveryMode = .highQualityFormat
                 options.isNetworkAccessAllowed = false
                 
@@ -294,7 +299,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             guard let thumbnailImage = await MediaAssetLoader().fetchUIImage(
                 phAsset: asset.phAssetRes.phAsset,
                 option: .size(w: size.width, h: size.height),
-                version: .current,
+                version: version,
                 prefersHighDynamicRange: false
             ) else {
                 return
@@ -307,7 +312,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             
             // While we displaying thumbnail image for transition, we start loading the full-size image at the same time.
             // This will help showing the full-size image more quickly
-            async let fullSizeImageTask = preloadFullSizeImage(assetRes: asset, version: .current)
+            async let fullSizeImageTask = preloadFullSizeImage(assetRes: asset, version: version)
             
             // We use a thumbnail image as a placeholder during the transition
             await displayImageForTransition(uiImage: thumbnailImage, enableZoom: false)
@@ -436,7 +441,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     }
     
     private func setupAVPlayerController(asset: PHAsset) async {
-        guard let avAsset = (await MediaAssetLoader().requestAVAsset(phAsset: asset, version: .current, isNetworkAccessAllowed: false) { _ in
+        guard let avAsset = (await MediaAssetLoader().requestAVAsset(phAsset: asset, version: version, isNetworkAccessAllowed: false) { _ in
             // ignored
         }) else {
             return

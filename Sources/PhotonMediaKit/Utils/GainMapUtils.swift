@@ -141,6 +141,53 @@ public class GainMapUtils {
         return mutable
     }
     
+    @available(iOS 18.0, macOS 14.0, *)
+    public func generateGainMapImage(
+        rawImageData: Data,
+        ciContext: CIContext = CIContext()
+    ) -> CIImage? {
+        guard let hdrImage = CIImage(
+            data: rawImageData,
+            options: [
+                .applyOrientationProperty: true,
+                .expandToHDR: true
+            ]
+        ) else {
+            return nil
+        }
+        
+        guard let sdrImage = CIImage(
+            data: rawImageData,
+            options: [.applyOrientationProperty: true]
+        ) else {
+            return nil
+        }
+        
+        let tempFile = FileManager.default.temporaryDirectory.appendingPathComponent("gainmap.png")
+        if FileManager.default.fileExists(atPath: tempFile.path()) {
+            try? FileManager.default.removeItem(at: tempFile)
+        }
+        
+        do {
+            let ciContext = CIContext()
+            
+            try ciContext.writeHEIFRepresentation(
+                of: sdrImage,
+                to: tempFile,
+                format: .ARGB8,
+                colorSpace: sdrImage.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!,
+                options: [.hdrImage: hdrImage]
+            )
+            
+            let gainMap = CIImage(contentsOf: tempFile, options: [.auxiliaryHDRGainMap: true])
+            LibLogger.imageIO.info("generateGainMapImage, success: \(gainMap != nil)")
+            return gainMap
+        } catch {
+            LibLogger.imageIO.error("Error on writing gain map image: \(error)")
+            return nil
+        }
+    }
+    
     /// Extract the HDR gain map information from the data and return ``HDRGainMapInfo``.
     ///
     /// See more: https://developer.apple.com/documentation/appkit/images_and_pdf/applying_apple_hdr_effect_to_your_photos
@@ -348,7 +395,7 @@ public class GainMapUtils {
         let targetHeight = primaryExtent.height / 2
         let targetScaleX = targetWidth / gainMap.extent.width
         let targetScaleY = targetHeight / gainMap.extent.height
-                
+        
         let output = gainMap.transformed(by: CGAffineTransform(scaleX: targetScaleX, y: targetScaleY))
         let croppedRect = CGRect(
             x: 0,

@@ -12,14 +12,14 @@ public enum MediaAssetVersion: String, Hashable, CaseIterable, CustomStringConve
     case current = "MediaAssetVersionCurrent"
     case original = "MediaAssetVersionOriginal"
     
-    func getPHImageRequestOptionsVersion() -> PHImageRequestOptionsVersion {
+    public func getPHImageRequestOptionsVersion() -> PHImageRequestOptionsVersion {
         switch self {
         case .original: return .original
         case .current: return .current
         }
     }
     
-    func getPHVideoRequestOptionsVersion() -> PHVideoRequestOptionsVersion {
+    public func getPHVideoRequestOptionsVersion() -> PHVideoRequestOptionsVersion {
         switch self {
         case .current:
             return .current

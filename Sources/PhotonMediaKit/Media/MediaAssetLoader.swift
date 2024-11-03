@@ -212,7 +212,7 @@ public actor MediaAssetLoader {
         LibLogger.mediaLoader.log("fetchUIImage for \(phAsset.localIdentifier), option \(option), version: \(version)")
         switch option {
         case .thumbnail:
-            return await fetchThumbnailUIImage(phAsset: phAsset)
+            return await fetchThumbnailUIImage(phAsset: phAsset, version: version)
         case .full:
             return await fetchFullUIImage(
                 phAsset: phAsset,
@@ -222,6 +222,7 @@ public actor MediaAssetLoader {
         case .size(w: let w, h: let h):
             return await fetchThumbnailUIImage(
                 phAsset: phAsset,
+                version: version,
                 size: CGSize(width: w, height: h)
             )
         }
@@ -414,6 +415,7 @@ public actor MediaAssetLoader {
     public func fetchThumbnailCGImage(
         phAsset: PHAsset,
         size: CGSize = MediaAssetLoader.defaultThumbnailSize,
+        version: MediaAssetVersion = .current,
         isNetworkAccessAllowed: Bool = false,
         onProgressChanged: ((Double) -> Void)? = nil
     ) async -> CGImage? {
@@ -424,6 +426,7 @@ public actor MediaAssetLoader {
             o.isNetworkAccessAllowed = isNetworkAccessAllowed
             o.isSynchronous = true
             o.resizeMode = .fast
+            o.version = version.getPHImageRequestOptionsVersion()
             
             if isNetworkAccessAllowed, let onProgressChanged = onProgressChanged {
                 o.progressHandler = { progress, error, obj, map in

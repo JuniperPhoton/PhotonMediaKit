@@ -24,6 +24,7 @@ public struct UIImageViewerUIViewRepresentation<AssetProvider: MediaAssetProvide
     private let animateDismissToStartLocation: Bool
     private let animateBackgroundOnViewLoaded: Bool
     private let prefersHighDynamicRange: Bool
+    private let version: MediaAssetVersion
     private let onRequestDismiss: ((Bool) -> Void)
     private let onRequestDismissRootController: (() -> Void)
     
@@ -35,6 +36,7 @@ public struct UIImageViewerUIViewRepresentation<AssetProvider: MediaAssetProvide
         animateDismissToStartLocation: Bool,
         animateBackgroundOnViewLoaded: Bool,
         prefersHighDynamicRange: Bool,
+        version: MediaAssetVersion,
         onRequestDismiss: @escaping ((Bool) -> Void),
         onRequestDismissRootController: @escaping (() -> Void)
     ) {
@@ -46,6 +48,7 @@ public struct UIImageViewerUIViewRepresentation<AssetProvider: MediaAssetProvide
         self.animateBackgroundOnViewLoaded = animateBackgroundOnViewLoaded
         self.onRequestDismiss = onRequestDismiss
         self.prefersHighDynamicRange = prefersHighDynamicRange
+        self.version = version
         self.onRequestDismissRootController = onRequestDismissRootController
     }
     
@@ -63,11 +66,12 @@ public struct UIImageViewerUIViewRepresentation<AssetProvider: MediaAssetProvide
         )
         
         controller.setImages(self.images)
-        controller.onRequestDismiss = onRequestDismiss
-        controller.onRequestDismissRootController = onRequestDismissRootController
-        controller.ornamentProvider = ornamentProvider
+        controller.onRequestDismiss = self.onRequestDismiss
+        controller.onRequestDismissRootController = self.onRequestDismissRootController
+        controller.ornamentProvider = self.ornamentProvider
         controller.syncer = self.syncer
-        controller.prefersHighDynamicRange = prefersHighDynamicRange
+        controller.prefersHighDynamicRange = self.prefersHighDynamicRange
+        controller.version = self.version
         controller.animateTransitToStartLocation = self.animateTransitToStartLocation
         controller.animateDismissToStartLocation = self.animateDismissToStartLocation
         controller.animateBackgroundOnViewLoaded = self.animateBackgroundOnViewLoaded

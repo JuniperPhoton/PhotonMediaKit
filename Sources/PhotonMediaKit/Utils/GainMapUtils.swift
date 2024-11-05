@@ -445,7 +445,7 @@ public class GainMapUtils {
     
     /// Get the CIImage of the auxiliary gain map data if exists.
     public func getGainMapImage(auxiliaryMap: Dictionary<CFString, Any>) async -> CIImage? {
-        guard var mutableDesc = auxiliaryMap[kCGImageAuxiliaryDataInfoDataDescription] as? Dictionary<String, Any> else {
+        guard let mutableDesc = auxiliaryMap[kCGImageAuxiliaryDataInfoDataDescription] as? Dictionary<String, Any> else {
             return nil
         }
         

@@ -9,6 +9,8 @@ import Foundation
 import SwiftUI
 import PhotonMediaKit
 
+let loader = MediaAssetCachedLoader.createDefaultInstance()
+
 /// A view to display a ``MediaAssetRes`` thumbnail image, which can be used in a list or a grid view.
 public struct PHAssetImageView: View {
     let asset: MediaAssetRes
@@ -50,7 +52,7 @@ public struct PHAssetImageView: View {
     }
     
     private func loadImage() async {
-        self.cgImage = await MediaAssetLoader().fetchThumbnailCGImage(phAsset: asset.phAsset, version: version)
+        self.cgImage = await loader.fetchThumbnailCGImage(assestRes: asset, version: version)
     }
     
     private func release() {

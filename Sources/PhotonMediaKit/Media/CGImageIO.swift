@@ -182,7 +182,7 @@ public actor CGImageIO {
     /// - parameter file: file URL  to be saved into
     /// - parameter cgImage: the image to be saved
     /// - parameter utType: a ``UTType`` to identify the image format
-    /// - parameter metadata: metadata creating with ``CGImageSourceCopyMetadataAtIndex``. 
+    /// - parameter metadata: metadata creating with ``CGImageSourceCopyMetadataAtIndex``.
     /// Note that changing the tiff:Orientation in this metadata won't work.
     public func saveToFile(
         file: URL,
@@ -215,9 +215,7 @@ public actor CGImageIO {
         throw IOError("Failed to finalize")
     }
     
-    /// Get the jpeg data from a ``CGImage``.
-    /// - parameter cgImage: the image to get data
-    public func getJpegData(cgImage: CGImage, properties: CFDictionary? = nil) throws -> Data {
+    public nonisolated func getJpegDataNonIsolated(cgImage: CGImage, properties: CFDictionary? = nil) throws -> Data {
         guard let mutableData = CFDataCreateMutable(nil, 0),
               let destination = CGImageDestinationCreateWithData(mutableData, UTType.jpeg.identifier as CFString, 1, nil) else {
             throw IOError("Error on getting data")
@@ -230,6 +228,12 @@ public actor CGImageIO {
         }
         
         return mutableData as Data
+    }
+    
+    /// Get the jpeg data from a ``CGImage``.
+    /// - parameter cgImage: the image to get data
+    public func getJpegData(cgImage: CGImage, properties: CFDictionary? = nil) throws -> Data {
+        return try getJpegDataNonIsolated(cgImage: cgImage, properties: properties)
     }
     
     /// Get the orientation from EXIF of the image ``file``.

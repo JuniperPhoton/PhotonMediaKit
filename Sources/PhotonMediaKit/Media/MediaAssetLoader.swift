@@ -144,7 +144,7 @@ public actor MediaAssetLoader {
         let requestOptions = PHAssetResourceRequestOptions()
         requestOptions.isNetworkAccessAllowed = allowFromNetwork
         
-        if allowFromNetwork, let onProgressChanged = onProgressChanged {
+        if allowFromNetwork, let onProgressChanged {
             requestOptions.progressHandler = { progress in
                 onProgressChanged(progress)
             }
@@ -172,7 +172,7 @@ public actor MediaAssetLoader {
             let o = PHLivePhotoRequestOptions()
             o.isNetworkAccessAllowed = allowFromNetwork
             
-            if allowFromNetwork, let onProgressChanged = onProgressChanged {
+            if allowFromNetwork, let onProgressChanged {
                 o.progressHandler = { progress, error, obj, map in
                     onProgressChanged(progress)
                 }
@@ -437,7 +437,7 @@ public actor MediaAssetLoader {
             let o = PHImageRequestOptions()
             o.isNetworkAccessAllowed = allowFromNetwork
             o.isSynchronous = true
-            if allowFromNetwork, let onProgressChanged = onProgressChanged {
+            if allowFromNetwork, let onProgressChanged {
                 o.progressHandler = { progress, error, obj, map in
                     onProgressChanged(progress)
                 }
@@ -484,7 +484,7 @@ public actor MediaAssetLoader {
             o.resizeMode = .fast
             o.version = version.getPHImageRequestOptionsVersion()
             
-            if isNetworkAccessAllowed, let onProgressChanged = onProgressChanged {
+            if isNetworkAccessAllowed, let onProgressChanged {
                 o.progressHandler = { progress, error, obj, map in
                     onProgressChanged(progress)
                 }
@@ -535,7 +535,7 @@ public actor MediaAssetLoader {
             o.isNetworkAccessAllowed = isNetworkAccessAllowed
             o.version = version.getPHVideoRequestOptionsVersion()
             
-            if isNetworkAccessAllowed, let onProgressChanged = onProgressChanged {
+            if isNetworkAccessAllowed, let onProgressChanged {
                 o.progressHandler = { progress, error, obj, map in
                     onProgressChanged(progress)
                 }

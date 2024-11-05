@@ -296,12 +296,23 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             
             let size = currentViewSize
             
-            guard let thumbnailImage = await MediaAssetLoader().fetchUIImage(
+            var thumbnailImage = await MediaAssetLoader().fetchUIImage(
                 phAsset: asset.phAssetRes.phAsset,
                 option: .size(w: size.width, h: size.height),
                 version: version,
                 prefersHighDynamicRange: false
-            ) else {
+            )
+            
+            if thumbnailImage == nil && version == .original {
+                thumbnailImage = await MediaAssetLoader().fetchUIImage(
+                    phAsset: asset.phAssetRes.phAsset,
+                    option: .size(w: size.width, h: size.height),
+                    version: .current,
+                    prefersHighDynamicRange: false
+                )
+            }
+            
+            guard let thumbnailImage else {
                 return
             }
             
@@ -352,12 +363,23 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
     }
     
     private func preloadFullSizeImage(assetRes: AssetProvider, version: MediaAssetVersion) async -> UIImage? {
-        return await MediaAssetLoader().fetchUIImage(
+        var image = await MediaAssetLoader().fetchUIImage(
             phAsset: assetRes.phAssetRes.phAsset,
             option: .full,
             version: version,
             prefersHighDynamicRange: prefersHighDynamicRange
         )
+        
+        if image == nil && version == .original {
+            image = await MediaAssetLoader().fetchUIImage(
+                phAsset: assetRes.phAssetRes.phAsset,
+                option: .full,
+                version: .current,
+                prefersHighDynamicRange: prefersHighDynamicRange
+            )
+        }
+        
+        return nil
     }
     
     @MainActor

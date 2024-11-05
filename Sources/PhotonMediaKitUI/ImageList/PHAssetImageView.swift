@@ -14,17 +14,23 @@ public struct PHAssetImageView: View {
     let asset: MediaAssetRes
     let contentMode: ContentMode
     let version: MediaAssetVersion
+    let isNetworkAccessAllowed: Bool
+    let fallbackToUseCurrentVersion: Bool
     
     @State private var cgImage: CGImage? = nil
     
     public init(
         asset: MediaAssetRes,
         contentMode: ContentMode = .fill,
-        version: MediaAssetVersion = .current
+        version: MediaAssetVersion = .current,
+        isNetworkAccessAllowed: Bool = false,
+        fallbackToUseCurrentVersion: Bool = true
     ) {
         self.asset = asset
         self.contentMode = contentMode
         self.version = version
+        self.isNetworkAccessAllowed = isNetworkAccessAllowed
+        self.fallbackToUseCurrentVersion = fallbackToUseCurrentVersion
     }
     
     public var body: some View {
@@ -50,7 +56,21 @@ public struct PHAssetImageView: View {
     }
     
     private func loadImage() async {
-        self.cgImage = await MediaAssetLoader().fetchThumbnailCGImage(phAsset: asset.phAsset, version: version)
+        var image = await MediaAssetLoader().fetchThumbnailCGImage(
+            phAsset: asset.phAsset,
+            version: version,
+            isNetworkAccessAllowed: isNetworkAccessAllowed
+        )
+        
+        if image == nil && version == .original {
+            image = await MediaAssetLoader().fetchThumbnailCGImage(
+                phAsset: asset.phAsset,
+                version: .current,
+                isNetworkAccessAllowed: isNetworkAccessAllowed
+            )
+        }
+        
+        self.cgImage = image
     }
     
     private func release() {

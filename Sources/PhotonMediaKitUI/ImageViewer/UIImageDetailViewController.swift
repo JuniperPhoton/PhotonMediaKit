@@ -379,7 +379,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
             )
         }
         
-        return nil
+        return image
     }
     
     @MainActor

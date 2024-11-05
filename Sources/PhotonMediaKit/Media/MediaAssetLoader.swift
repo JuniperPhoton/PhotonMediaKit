@@ -237,6 +237,11 @@ public actor MediaAssetLoader {
         size: CGSize = MediaAssetLoader.defaultThumbnailSize
     ) async -> UIImage? {
         return await withCheckedContinuation { continuation in
+            if Task.isCancelled {
+                continuation.resume(returning: nil)
+                return
+            }
+            
             let cacheManager = PHCachingImageManager.default()
             
             let o = PHImageRequestOptions()
@@ -272,6 +277,12 @@ public actor MediaAssetLoader {
         prefersHighDynamicRange: Bool
     ) async -> UIImage? {
         return await withCheckedContinuation { continuation in
+            if Task.isCancelled {
+                LibLogger.libDefault.warning("fetchFullUIImage, task cancelled")
+                continuation.resume(returning: nil)
+                return
+            }
+            
             let cacheManager = PHCachingImageManager.default()
             
             let o = PHImageRequestOptions()
@@ -330,6 +341,11 @@ public actor MediaAssetLoader {
     
     public func fetchFullCGImage(phAsset: PHAsset) async -> CGImage? {
         return await withCheckedContinuation { continuation in
+            if Task.isCancelled {
+                continuation.resume(returning: nil)
+                return
+            }
+            
             let cacheManager = PHCachingImageManager.default()
             
             let o = PHImageRequestOptions()
@@ -338,6 +354,11 @@ public actor MediaAssetLoader {
             
             let id = cacheManager
                 .requestImageDataAndOrientation(for: phAsset, options: o) { data, str, orientation, map in
+                    if Task.isCancelled {
+                        continuation.resume(returning: nil)
+                        return
+                    }
+                    
                     if let data = data,
                        let source = CGImageSourceCreateWithData(data as CFData, nil) {
                         let cgImage = CGImageSourceCreateImageAtIndex(source, 0, nil)
@@ -355,7 +376,17 @@ public actor MediaAssetLoader {
     
     public func fetchFullRawData(phAsset: PHAsset) async -> (PHAssetResource, Data)? {
         return await withCheckedContinuation { continuation in
+            if Task.isCancelled {
+                continuation.resume(returning: nil)
+                return
+            }
+            
             guard let rawRes = MediaResourceLoader.shared.loadAssetResources(for: phAsset, for: [.rawImage]) else {
+                continuation.resume(returning: nil)
+                return
+            }
+            
+            if Task.isCancelled {
                 continuation.resume(returning: nil)
                 return
             }
@@ -365,17 +396,26 @@ public actor MediaAssetLoader {
             
             var outputData = Data()
             
-            PHAssetResourceManager.default().requestData(
+            let id = PHAssetResourceManager.default().requestData(
                 for: rawRes,
                 options: option
             ) { data in
                 outputData.append(data)
             } completionHandler: { error in
+                if Task.isCancelled {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                
                 if error != nil && outputData.count > 0 {
                     continuation.resume(returning: nil)
                 } else {
                     continuation.resume(returning: (rawRes, outputData))
                 }
+            }
+            
+            if Task.isCancelled {
+                PHAssetResourceManager.default().cancelDataRequest(id)
             }
         }
     }
@@ -387,6 +427,11 @@ public actor MediaAssetLoader {
         onProgressChanged: ((Double) -> Void)? = nil
     ) async -> (Data?, CGImagePropertyOrientation) {
         return await withCheckedContinuation { continuation in
+            if Task.isCancelled {
+                continuation.resume(returning: (nil, CGImagePropertyOrientation.up))
+                return
+            }
+            
             let manager = PHImageManager()
             
             let o = PHImageRequestOptions()
@@ -403,9 +448,15 @@ public actor MediaAssetLoader {
             
             let id = manager
                 .requestImageDataAndOrientation(for: phAsset, options: o) { data, str, orientation, map in
+                    if Task.isCancelled {
+                        continuation.resume(returning: (nil, CGImagePropertyOrientation.up))
+                        return
+                    }
+                    
                     LibLogger.mediaLoader.log("end fetch full data for \(phAsset.localIdentifier)")
                     continuation.resume(returning: (data, orientation))
                 }
+            
             if Task.isCancelled {
                 manager.cancelImageRequest(id)
             }
@@ -420,6 +471,11 @@ public actor MediaAssetLoader {
         onProgressChanged: ((Double) -> Void)? = nil
     ) async -> CGImage? {
         return await withCheckedContinuation { continuation in
+            if Task.isCancelled {
+                continuation.resume(returning: nil)
+                return
+            }
+            
             let cacheManager = PHCachingImageManager.default()
             
             let o = PHImageRequestOptions()

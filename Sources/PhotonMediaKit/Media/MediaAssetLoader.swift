@@ -87,6 +87,10 @@ public actor MediaAssetLoader {
     
     public struct FetchError: Error {
         let message: String
+        
+        public init(message: String) {
+            self.message = message
+        }
     }
     
     private struct FetchResult<T> {

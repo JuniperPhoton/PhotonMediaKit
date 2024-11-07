@@ -9,6 +9,35 @@ import Foundation
 import SwiftUI
 import PhotonMediaKit
 
+/// A view to display a ``CGImage`` thumbnail image, which can be used in a list or a grid view.
+public struct PHAssetCGImageView: View {
+    let cgImage: CGImage?
+    let contentMode: ContentMode
+    
+    public init(cgImage: CGImage?, contentMode: ContentMode) {
+        self.cgImage = cgImage
+        self.contentMode = contentMode
+    }
+    
+    public var body: some View {
+        GeometryReader { proxy in
+            ZStack {
+                if let cgImage = cgImage {
+                    Image(cgImage, scale: 1.0, label: Text(""))
+                        .resizable()
+                        .aspectRatio(contentMode: contentMode)
+                        .zIndex(1)
+                } else {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.2))
+                        .matchParent()
+                        .zIndex(0)
+                }
+            }.frame(width: proxy.size.width, height: proxy.size.height).clipped()
+        }.animation(.default, value: cgImage)
+    }
+}
+
 /// A view to display a ``MediaAssetRes`` thumbnail image, which can be used in a list or a grid view.
 public struct PHAssetImageView: View {
     let asset: MediaAssetRes
@@ -34,25 +63,12 @@ public struct PHAssetImageView: View {
     }
     
     public var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                if let cgImage = cgImage {
-                    Image(cgImage, scale: 1.0, label: Text(""))
-                        .resizable()
-                        .aspectRatio(contentMode: contentMode)
-                        .zIndex(1)
-                } else {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.2))
-                        .matchParent()
-                        .zIndex(0)
-                }
-            }.frame(width: proxy.size.width, height: proxy.size.height).clipped()
-        }.task {
-            await loadImage()
-        }.onDisappear {
-            release()
-        }.animation(.default, value: cgImage)
+        PHAssetCGImageView(cgImage: cgImage, contentMode: contentMode)
+            .task {
+                await loadImage()
+            }.onDisappear {
+                self.cgImage = nil
+            }
     }
     
     private func loadImage() async {

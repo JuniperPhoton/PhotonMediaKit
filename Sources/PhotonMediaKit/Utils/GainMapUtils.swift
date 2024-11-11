@@ -141,7 +141,7 @@ public class GainMapUtils {
         return mutable
     }
     
-    @available(iOS 18.0, macOS 14.0, *)
+    @available(iOS 18.0, macOS 15.0, *)
     public func generateGainMapImage(
         rawImageData: Data,
         ciContext: CIContext = CIContext()

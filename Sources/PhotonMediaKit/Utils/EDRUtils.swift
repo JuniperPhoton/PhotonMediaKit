@@ -8,6 +8,7 @@
 import Foundation
 import CoreImage
 import CoreGraphics
+import UniformTypeIdentifiers
 
 #if canImport(UIKit)
 import UIKit
@@ -62,14 +63,18 @@ public class EDRUtils {
             return nil
         }
         
-        return await extractHeadroom(data: data)
+        guard let utType = UTType(filenameExtension: url.pathExtension) else {
+            return nil
+        }
+        
+        return await extractHeadroom(data: data, utType: utType)
     }
     
     /// Extract headroom from the EXIF metadata.
     ///
     /// See more: https://developer.apple.com/documentation/appkit/images_and_pdf/applying_apple_hdr_effect_to_your_photos
-    public static func extractHeadroom(data: Data) async -> CGFloat? {
-        guard let map = await CGImageIO.shared.getProperties(data: data) else {
+    public static func extractHeadroom(data: Data, utType: UTType?) async -> CGFloat? {
+        guard let map = await CGImageIO.shared.getProperties(data: data, utType: utType) else {
             return nil
         }
         

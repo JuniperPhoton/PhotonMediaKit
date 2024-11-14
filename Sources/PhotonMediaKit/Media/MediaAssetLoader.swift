@@ -424,15 +424,20 @@ public actor MediaAssetLoader {
         }
     }
     
+    /// Fetch full data and associated information about a PHAsset.
+    /// - parameter phAsset: The PHAsset to load.
+    /// - parameter version: Which version to load.
+    /// - parameter allowFromNetwork: Allowing loading from network or not. If it's true, onProgressChanged will be invoked during downloading.
+    /// - parameter onProgressChanged: The block will be invoked when downloading.
     public func fetchFullData(
         phAsset: PHAsset,
         version: MediaAssetVersion,
         allowFromNetwork: Bool,
         onProgressChanged: ((Double) -> Void)? = nil
-    ) async -> (Data?, CGImagePropertyOrientation) {
+    ) async -> (data: Data?, type: UTType?, orientation: CGImagePropertyOrientation) {
         return await withCheckedContinuation { continuation in
             if Task.isCancelled {
-                continuation.resume(returning: (nil, CGImagePropertyOrientation.up))
+                continuation.resume(returning: (nil, nil, CGImagePropertyOrientation.up))
                 return
             }
             
@@ -450,15 +455,40 @@ public actor MediaAssetLoader {
             
             LibLogger.mediaLoader.log("begin fetch full data for \(phAsset.localIdentifier)")
             
+            var overridedType: UTType? = nil
+            
+            // If it's loading the original version and it has RAW resource,
+            // the output UTType should be that type.
+            // Without doing so, the typeIdentifier in the requestImageDataAndOrientation result callback
+            // will be public.tiff, which is incorrect when loading metadata from the data later.
+            if o.version == .original {
+                if let res = MediaResourceLoader.shared.loadAssetResources(for: phAsset, for: [.rawImage]) {
+                    let type = res.uniformTypeIdentifier
+                    overridedType = UTType(type)
+                }
+            }
+            
             let id = manager
-                .requestImageDataAndOrientation(for: phAsset, options: o) { data, str, orientation, map in
+                .requestImageDataAndOrientation(for: phAsset, options: o) { data, typeIdentifier, orientation, _ in
                     if Task.isCancelled {
-                        continuation.resume(returning: (nil, CGImagePropertyOrientation.up))
+                        continuation.resume(returning: (nil, nil, CGImagePropertyOrientation.up))
                         return
                     }
                     
-                    LibLogger.mediaLoader.log("end fetch full data for \(phAsset.localIdentifier)")
-                    continuation.resume(returning: (data, orientation))
+                    var utType: UTType?
+                    
+                    if let overridedType = overridedType {
+                        utType = overridedType
+                    } else {
+                        if let typeIdentifier {
+                            utType = UTType(typeIdentifier)
+                        } else {
+                            utType = nil
+                        }
+                    }
+                    
+                    LibLogger.mediaLoader.log("end fetch full data for \(phAsset.localIdentifier), type \(String(describing: utType?.identifier))")
+                    continuation.resume(returning: (data, utType, orientation))
                 }
             
             if Task.isCancelled {
@@ -518,7 +548,7 @@ public actor MediaAssetLoader {
     }
     
     public func fetchProperties(phAsset: PHAsset) async -> Dictionary<String, Any>? {
-        let (data, _) = await fetchFullData(phAsset: phAsset, version: .current, allowFromNetwork: false, onProgressChanged: { _ in })
+        let (data, _, _) = await fetchFullData(phAsset: phAsset, version: .current, allowFromNetwork: false, onProgressChanged: { _ in })
         if let data = data {
             return await CGImageIO.shared.getProperties(data: data)
         } else {

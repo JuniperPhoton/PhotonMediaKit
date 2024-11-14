@@ -7,6 +7,7 @@
 
 import Foundation
 import CoreImage
+import UniformTypeIdentifiers
 
 public struct GainMapAuxiliaryDataResult {
     public let gainMapImageData: Data
@@ -141,47 +142,40 @@ public class GainMapUtils {
         return mutable
     }
     
+    /// Generate Gain Map Image attached file from the RAW image data.
+    ///
+    /// The output image will be a SDR photo in DisplayP3 color space, attached with HDR Gain Map.
+    ///
+    /// - parameter rawImageData: RAW image data.
+    /// - parameter outputFile: The file to write into.
+    /// - parameter ciContext: The CIContext to use.
     @available(iOS 18.0, macOS 15.0, *)
-    public func generateGainMapImage(
+    public func generateSDRWithGainMap(
         rawImageData: Data,
+        utType: UTType,
+        outputFile: URL,
         ciContext: CIContext = CIContext()
-    ) -> CIImage? {
-        guard let hdrImage = CIImage(
+    ) async -> URL? {
+        guard let hdrImage = await CIImageIO.loadCIImage(
             data: rawImageData,
-            options: [
-                .applyOrientationProperty: true,
-                .expandToHDR: true
-            ]
+            utType: utType,
+            decodeToHDR: true
         ) else {
             return nil
         }
         
-        guard let sdrImage = CIImage(
-            data: rawImageData,
-            options: [.applyOrientationProperty: true]
-        ) else {
-            return nil
-        }
-        
-        let tempFile = FileManager.default.temporaryDirectory.appendingPathComponent("gainmap.png")
-        if FileManager.default.fileExists(atPath: tempFile.path()) {
-            try? FileManager.default.removeItem(at: tempFile)
-        }
+        let colorSpace = CGColorSpace(name: CGColorSpace.displayP3)!
         
         do {
-            let ciContext = CIContext()
-            
             try ciContext.writeHEIFRepresentation(
-                of: sdrImage,
-                to: tempFile,
+                of: hdrImage,
+                to: outputFile,
                 format: .ARGB8,
-                colorSpace: sdrImage.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!,
+                colorSpace: colorSpace,
                 options: [.hdrImage: hdrImage]
             )
             
-            let gainMap = CIImage(contentsOf: tempFile, options: [.auxiliaryHDRGainMap: true])
-            LibLogger.imageIO.info("generateGainMapImage, success: \(gainMap != nil)")
-            return gainMap
+            return outputFile
         } catch {
             LibLogger.imageIO.error("Error on writing gain map image: \(error)")
             return nil

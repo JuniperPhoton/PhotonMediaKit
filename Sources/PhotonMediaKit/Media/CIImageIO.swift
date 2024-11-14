@@ -15,6 +15,43 @@ public actor CIImageIO {
         case other
     }
     
+    /// Load the data of a specific UTType to create a CIImage.
+    /// - parameter data: The file data.
+    /// - parameter utType: The UTType of the data. Can be constructed from a file name.
+    /// - parameter decodeToHDR: Whether decode to HDR or not. This will take effect on iOS 17 or macOS 14 or above.
+    ///
+    /// Note: Decoding
+    public static func loadCIImage(data: Data, utType: UTType?, decodeToHDR: Bool) async -> CIImage? {
+        var dic: [CFString: Any] = [:]
+        
+        if let utType = utType {
+            dic[kCGImageSourceTypeIdentifierHint] = utType.identifier
+        }
+        
+        if #available(iOS 17.0, macOS 14.0, *), decodeToHDR {
+            dic[kCGImageSourceDecodeRequest] = kCGImageSourceDecodeToHDR
+        }
+        
+        guard let source = CGImageSourceCreateWithData(
+            data as CFData,
+            dic as CFDictionary
+        ) else {
+            print("source is nil")
+            return nil
+        }
+        
+        guard let cgImage = CGImageSourceCreateImageAtIndex(source, 0, dic as CFDictionary) else {
+            print("cgImage is nil")
+            return nil
+        }
+        
+        let orientation = await CGImageIO.shared.getExifOrientation(data: data, utType: utType)
+        
+        let ciImage = CIImage(cgImage: cgImage)
+        let transform = ciImage.orientationTransform(for: orientation)
+        return ciImage.transformed(by: transform)
+    }
+    
     public let ciContext: CIContext
     
     public init(ciContext: CIContext = CIContext()) {

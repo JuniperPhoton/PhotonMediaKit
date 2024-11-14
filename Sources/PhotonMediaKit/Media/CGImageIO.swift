@@ -41,7 +41,7 @@ public actor CGImageIO {
         
         return cgImage
     }
-    
+        
     /// Scale image to the specified factor.
     /// Note that if rotationDegrees % 180 is not zero, the width and height parameters must be the original ones before rotation.
     public func scaleCGImage(
@@ -244,8 +244,8 @@ public actor CGImageIO {
     }
     
     /// Get the orientation from EXIF of the image ``file``.
-    public func getExifOrientation(data: Data) -> CGImagePropertyOrientation {
-        guard let map = getProperties(data: data) else {
+    public func getExifOrientation(data: Data, utType: UTType? = nil) -> CGImagePropertyOrientation {
+        guard let map = getProperties(data: data, utType: utType) else {
             return .up
         }
         guard let orientation = map[kCGImagePropertyOrientation as String] as? UInt32 else {
@@ -298,10 +298,14 @@ public actor CGImageIO {
     }
     
     /// Get the properties of the image ``Data``.
-    public func getProperties(data: Data) -> CIImageProperties? {
-        let options: [String: Any] = [
-            kCGImageSourceShouldCacheImmediately as String: false,
+    public func getProperties(data: Data, utType: UTType? = nil) -> CIImageProperties? {
+        var options: [String: Any] = [
+            kCGImageSourceShouldCacheImmediately as String: false
         ]
+        
+        if let utType {
+            options[kCGImageSourceTypeIdentifierHint as String] = utType.identifier
+        }
         
         guard let source = CGImageSourceCreateWithData(data as CFData, options as CFDictionary) else {
             return nil

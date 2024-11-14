@@ -182,6 +182,37 @@ public class GainMapUtils {
         }
     }
     
+    @available(iOS 18.0, macOS 15.0, *)
+    public func generateSDRWithGainMap(
+        url: URL,
+        outputFile: URL,
+        ciContext: CIContext = CIContext()
+    ) async -> URL? {
+        guard let hdrImage = await CIImageIO.loadCIImage(
+            url: url,
+            decodeToHDR: true
+        ) else {
+            return nil
+        }
+        
+        let colorSpace = CGColorSpace(name: CGColorSpace.displayP3)!
+        
+        do {
+            try ciContext.writeHEIFRepresentation(
+                of: hdrImage,
+                to: outputFile,
+                format: .ARGB8,
+                colorSpace: colorSpace,
+                options: [.hdrImage: hdrImage]
+            )
+            
+            return outputFile
+        } catch {
+            LibLogger.imageIO.error("Error on writing gain map image: \(error)")
+            return nil
+        }
+    }
+    
     /// Extract the HDR gain map information from the data and return ``HDRGainMapInfo``.
     ///
     /// See more: https://developer.apple.com/documentation/appkit/images_and_pdf/applying_apple_hdr_effect_to_your_photos

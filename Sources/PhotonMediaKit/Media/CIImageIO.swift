@@ -15,6 +15,16 @@ public actor CIImageIO {
         case other
     }
     
+    public static func loadCIImage(url: URL, decodeToHDR: Bool) async -> CIImage? {
+        var options: [CIImageOption: Any] = [:]
+        if #available(iOS 17.0, macOS 14.0, *), decodeToHDR {
+            options[.expandToHDR] = true
+        }
+        let ciImage = CIImage(contentsOf: url, options: options)
+        LibLogger.imageIO.log("loadCIImage, extent: \(String(describing: ciImage?.extent))")
+        return ciImage
+    }
+    
     /// Load the data of a specific UTType to create a CIImage.
     /// - parameter data: The file data.
     /// - parameter utType: The UTType of the data. Can be constructed from a file name.
@@ -24,7 +34,7 @@ public actor CIImageIO {
     public static func loadCIImage(data: Data, utType: UTType?, decodeToHDR: Bool) async -> CIImage? {
         var dic: [CFString: Any] = [:]
         
-        if let utType = utType {
+        if let utType {
             dic[kCGImageSourceTypeIdentifierHint] = utType.identifier
         }
         
@@ -45,11 +55,20 @@ public actor CIImageIO {
             return nil
         }
         
+        LibLogger.imageIO.log("loadCIImage, \(cgImage.width)")
+        
         let orientation = await CGImageIO.shared.getExifOrientation(data: data, utType: utType)
         
-        let ciImage = CIImage(cgImage: cgImage)
+        let ciImage = CIImage(
+            cgImageSource: source,
+            index: 0
+        )
         let transform = ciImage.orientationTransform(for: orientation)
-        return ciImage.transformed(by: transform)
+        let transformed = ciImage.transformed(by: transform)
+        
+        LibLogger.imageIO.log("loadCIImage, orientation: \(orientation.rawValue), utType: \(utType?.identifier ?? "nil"), extent: \(String(describing: transformed.extent))")
+        
+        return transformed
     }
     
     public let ciContext: CIContext

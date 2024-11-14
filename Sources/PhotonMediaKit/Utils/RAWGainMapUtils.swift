@@ -24,7 +24,7 @@ public final class RAWGainMapUtils {
         }
     }
     
-    public static let shard = RAWGainMapUtils()
+    public static let shared = RAWGainMapUtils()
     
     /// Generate Gain Map Image attached file from the RAW image data.
     ///

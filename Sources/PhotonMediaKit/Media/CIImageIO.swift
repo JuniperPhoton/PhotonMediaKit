@@ -15,6 +15,10 @@ public actor CIImageIO {
         case other
     }
     
+    /// Load CIImage from a URL.
+    ///
+    /// - parameter url: The file URL.
+    /// - parameter decodeToHDR: Whether decode to HDR or not. This will take effect on iOS 17 or macOS 14 or above.
     public static func loadCIImage(url: URL, decodeToHDR: Bool) async -> CIImage? {
         var options: [CIImageOption: Any] = [:]
         if #available(iOS 17.0, macOS 14.0, *), decodeToHDR {
@@ -25,9 +29,10 @@ public actor CIImageIO {
         return ciImage
     }
     
-    /// Load the data of a specific UTType to create a CIImage.
+    /// Load CIImage from a file data.
+    ///
     /// - parameter data: The file data.
-    /// - parameter utType: The UTType of the data. Can be constructed from a file name.
+    /// - parameter utType: The accurate UTType of the data. Can be constructed from a file name.
     /// - parameter decodeToHDR: Whether decode to HDR or not. This will take effect on iOS 17 or macOS 14 or above.
     ///
     /// Note: Decoding
@@ -126,7 +131,7 @@ public actor CIImageIO {
         guard let outputFile = file else {
             throw IOError.render
         }
-                
+        
         return await MediaAssetWriter.shared.saveMediaFileToAlbum(
             file: outputFile,
             location: asset.location,

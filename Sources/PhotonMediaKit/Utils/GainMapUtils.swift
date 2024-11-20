@@ -142,6 +142,32 @@ public class GainMapUtils {
         return mutable
     }
     
+    /// Get the gain map image from the data.
+    /// - parameter data: The original data of the gain map.
+    /// - parameter applyOrientationProperty: If true, the orientation property will be applied to the image.
+    public func getGainMapImage(data: Data, applyOrientationProperty: Bool = true) async -> CIImage? {
+        return CIImage(
+            data: data,
+            options: [
+                .auxiliaryHDRGainMap: true,
+                .applyOrientationProperty: applyOrientationProperty
+            ]
+        )
+    }
+    
+    /// Get the gain map image from the data.
+    /// - parameter url: The URL of the gain map file.
+    /// - parameter applyOrientationProperty: If true, the orientation property will be applied to the image.
+    public func getGainMapImage(url: URL, applyOrientationProperty: Bool = true) -> CIImage? {
+        return CIImage(
+            contentsOf: url,
+            options: [
+                .auxiliaryHDRGainMap: true,
+                .applyOrientationProperty: applyOrientationProperty,
+            ]
+        )
+    }
+    
     /// Extract the HDR gain map information from the data and return ``HDRGainMapInfo``.
     ///
     /// See more: https://developer.apple.com/documentation/appkit/images_and_pdf/applying_apple_hdr_effect_to_your_photos

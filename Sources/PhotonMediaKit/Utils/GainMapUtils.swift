@@ -95,8 +95,10 @@ public struct GainMapBitmapInfo {
     /// If the metadata contains the headroom, this will not be nil.
     /// Otherwise, you should read the headroom from maker.
     ///
-    /// Note: This will be the log2 based headroom, as known as "stops".
+    /// Note: This will be the log2 based headroom in ``GainMapType/isoGainMap``, as known as "stops".
     /// To convert it to the linear headroom, you should use `pow(2, headroom)` or use the ``linearHeadroom`` property.
+    ///
+    /// For ``GainMapType/hdrGainMap``, this will be the linear headroom.
     public let headroom: CGFloat?
     
     /// The linear headroom of the gain map image.
@@ -105,7 +107,12 @@ public struct GainMapBitmapInfo {
         guard let headroom = headroom else {
             return nil
         }
-        return pow(2, headroom)
+        
+        if type == .isoGainMap {
+            return pow(2, headroom)
+        } else {
+            return headroom
+        }
     }
     
     /// The image bitmap data of the gain map image.

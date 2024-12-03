@@ -27,27 +27,23 @@ public final class RAWGainMapUtils {
     public static let shared = RAWGainMapUtils()
     
     /// Generate Gain Map Image attached file from the RAW image data.
-    ///
-    /// The output image will be a SDR photo in DisplayP3 color space, attached with HDR Gain Map.
-    ///
-    /// - parameter rawImageData: RAW image data.
-    /// - parameter utType: The accurate UTType of this image data.
-    /// - parameter outputFile: The file to write into.
-    /// - parameter ciContext: The CIContext to use. Must be in ITU-R BT.2100 PQ color space.
-    /// - parameter edrAmount: The amount of extended dynamic range to apply.
+    /// Just like ``generateSDRWithGainMap(rawImageURL:outputFile:ciContext:edrAmount:scaleFactor:)``,
+    /// this method accepts raw image `Data` and the its `UTType` instead of URL.
     @available(iOS 18.0, macOS 15.0, *)
     public func generateSDRWithGainMap(
         rawImageData data: Data,
         utType: UTType,
         outputFile: URL,
         ciContext: CIContext = CIContext(options: [.workingColorSpace: CGColorSpace(name: CGColorSpace.itur_2100_PQ)!]),
-        edrAmount: EDRAmount = .normal
+        edrAmount: EDRAmount = .normal,
+        scaleFactor: Float = 0.5
     ) async -> URL? {
         guard let rawFilter = CIRAWFilter(imageData: data, identifierHint: utType.identifier) else {
             return nil
         }
         
         rawFilter.extendedDynamicRangeAmount = edrAmount.floatValue
+        rawFilter.scaleFactor = scaleFactor
         
         guard let rawOutput = rawFilter.outputImage else {
             return nil
@@ -75,23 +71,27 @@ public final class RAWGainMapUtils {
     ///
     /// The output image will be a SDR photo in DisplayP3 color space, attached with HDR Gain Map.
     ///
-    /// - parameter outputFile: RAW image url.
-    /// - parameter outputFile: The file to write into.
-    /// - parameter ciContext: The CIContext to use. Must be in ITU-R BT.2100 PQ color space.
+    /// - parameter rawImageURL: RAW image url.
+    /// - parameter outputFile: The file to write into. Must be a HEIF file.
+    /// - parameter ciContext: The `CIContext` to use. Must be in ITU-R BT.2100 PQ color space.
     /// - parameter edrAmount: The amount of extended dynamic range to apply.
+    /// - parameter scaleFactor: The scale factor to apply to the image. Default is 0.5.
+    /// - returns: The output file you provided if success. Nil if fail.
     @available(iOS 18.0, macOS 15.0, *)
     public func generateSDRWithGainMap(
         rawImageURL url: URL,
         outputFile: URL,
         ciContext: CIContext = CIContext(options: [.workingColorSpace: CGColorSpace(name: CGColorSpace.itur_2100_PQ)!]),
-        edrAmount: EDRAmount = .normal
+        edrAmount: EDRAmount = .normal,
+        scaleFactor: Float = 0.5
     ) async -> URL? {
         guard let rawFilter = CIRAWFilter(imageURL: url) else {
             return nil
         }
         
         rawFilter.extendedDynamicRangeAmount = edrAmount.floatValue
-        
+        rawFilter.scaleFactor = scaleFactor
+
         guard let rawOutput = rawFilter.outputImage else {
             return nil
         }

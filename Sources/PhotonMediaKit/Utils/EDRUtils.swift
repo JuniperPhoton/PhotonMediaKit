@@ -52,8 +52,10 @@ public class EDRUtils {
     
     /// Extract headroom from the EXIF metadata.
     ///
+    /// > Note: This only supports images captured by iPhone, which will have Apple metadata.
+    ///
     /// See more: https://developer.apple.com/documentation/appkit/images_and_pdf/applying_apple_hdr_effect_to_your_photos
-    public static func extractHeadroom(url: URL) async -> CGFloat? {
+    public static func extractHeadroomFromAppleMetadata(url: URL) async -> CGFloat? {
         let _ = url.startAccessingSecurityScopedResource()
         defer {
             url.stopAccessingSecurityScopedResource()
@@ -67,13 +69,15 @@ public class EDRUtils {
             return nil
         }
         
-        return await extractHeadroom(data: data, utType: utType)
+        return await extractHeadroomFromAppleMetadata(data: data, utType: utType)
     }
     
     /// Extract headroom from the EXIF metadata.
     ///
+    /// > Note: This only supports images captured by iPhone, which will have Apple metadata.
+    ///
     /// See more: https://developer.apple.com/documentation/appkit/images_and_pdf/applying_apple_hdr_effect_to_your_photos
-    public static func extractHeadroom(data: Data, utType: UTType?) async -> CGFloat? {
+    public static func extractHeadroomFromAppleMetadata(data: Data, utType: UTType?) async -> CGFloat? {
         guard let map = await CGImageIO.shared.getProperties(data: data, utType: utType) else {
             return nil
         }

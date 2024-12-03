@@ -89,11 +89,24 @@ public struct GainMapBitmapInfo {
     public let pixelFormat: Int32
     
     /// The orientation of the gain map image in the ``CGImagePropertyOrientation``.
+    @available(*, deprecated, message: "Starting from iOS 18, this property is deprecated. The Gain Map image's orientation is the same as the primary image.")
     public let orientation: CGImagePropertyOrientation
     
     /// If the metadata contains the headroom, this will not be nil.
     /// Otherwise, you should read the headroom from maker.
+    ///
+    /// Note: This will be the log2 based headroom, as known as "stops".
+    /// To convert it to the linear headroom, you should use `pow(2, headroom)` or use the ``linearHeadroom`` property.
     public let headroom: CGFloat?
+    
+    /// The linear headroom of the gain map image.
+    /// See ``headroom`` for more details.
+    public var linearHeadroom: CGFloat? {
+        guard let headroom = headroom else {
+            return nil
+        }
+        return pow(2, headroom)
+    }
     
     /// The image bitmap data of the gain map image.
     public let data: Data

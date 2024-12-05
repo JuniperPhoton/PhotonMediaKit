@@ -34,7 +34,6 @@ public final class RAWGainMapUtils {
         rawImageData data: Data,
         utType: UTType,
         outputFile: URL,
-        ciContext: CIContext = CIContext(options: [.workingColorSpace: CGColorSpace(name: CGColorSpace.itur_2100_PQ)!]),
         edrAmount: EDRAmount = .normal,
         scaleFactor: Float = 0.5
     ) async -> URL? {
@@ -45,19 +44,26 @@ public final class RAWGainMapUtils {
         rawFilter.extendedDynamicRangeAmount = edrAmount.floatValue
         rawFilter.scaleFactor = scaleFactor
         
-        guard let rawOutput = rawFilter.outputImage else {
+        guard let hdrOutput = rawFilter.outputImage else {
+            return nil
+        }
+        
+        rawFilter.extendedDynamicRangeAmount = 0.0
+        
+        guard let sdrOutput = rawFilter.outputImage else {
             return nil
         }
         
         let colorSpace = CGColorSpace(name: CGColorSpace.displayP3)!
         
         do {
-            try ciContext.writeHEIFRepresentation(
-                of: rawOutput,
+            // Must use CIContext with no specific working color space.
+            try CIContext().writeHEIFRepresentation(
+                of: sdrOutput,
                 to: outputFile,
                 format: .ARGB8,
                 colorSpace: colorSpace,
-                options: [.hdrImage: rawOutput]
+                options: [.hdrImage: hdrOutput]
             )
             
             return outputFile
@@ -81,36 +87,23 @@ public final class RAWGainMapUtils {
     public func generateSDRWithGainMap(
         rawImageURL url: URL,
         outputFile: URL,
-        ciContext: CIContext = CIContext(options: [.workingColorSpace: CGColorSpace(name: CGColorSpace.itur_2100_PQ)!]),
         edrAmount: EDRAmount = .normal,
         scaleFactor: Float = 0.5
     ) async -> URL? {
-        guard let rawFilter = CIRAWFilter(imageURL: url) else {
+        guard let data = try? Data(contentsOf: url) else {
             return nil
         }
         
-        rawFilter.extendedDynamicRangeAmount = edrAmount.floatValue
-        rawFilter.scaleFactor = scaleFactor
-
-        guard let rawOutput = rawFilter.outputImage else {
+        guard let utType = UTType(filenameExtension: url.pathExtension) else {
             return nil
         }
         
-        let colorSpace = CGColorSpace(name: CGColorSpace.displayP3)!
-        
-        do {
-            try ciContext.writeHEIFRepresentation(
-                of: rawOutput,
-                to: outputFile,
-                format: .ARGB8,
-                colorSpace: colorSpace,
-                options: [.hdrImage: rawOutput]
-            )
-            
-            return outputFile
-        } catch {
-            LibLogger.imageIO.error("Error on writing gain map image: \(error)")
-            return nil
-        }
+        return await generateSDRWithGainMap(
+            rawImageData: data,
+            utType: utType,
+            outputFile: outputFile,
+            edrAmount: edrAmount,
+            scaleFactor: scaleFactor
+        )
     }
 }

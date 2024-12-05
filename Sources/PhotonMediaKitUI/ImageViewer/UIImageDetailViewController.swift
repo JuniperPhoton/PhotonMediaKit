@@ -559,7 +559,7 @@ class UIImageDetailViewController<AssetProvider: MediaAssetProvider>: UIViewCont
         if #available(iOS 17.0, macOS 14.0, tvOS 17.0, *) {
             if uiImage.isHighDynamicRange {
                 LibLogger.libDefault.log("set preferredImageDynamicRange to unspecified")
-                view.preferredImageDynamicRange = .unspecified
+                view.preferredImageDynamicRange = .high
             } else {
                 LibLogger.libDefault.log("provideContentView")
             }

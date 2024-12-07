@@ -14,7 +14,7 @@ let package = Package(
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
             name: "PhotonMediaKit",
-            targets: ["PhotonMediaKit", "PhotonMediaKitUI"]),
+            targets: ["PhotonMediaKit"]),
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
@@ -40,16 +40,10 @@ let package = Package(
                 .headerSearchPath("include")
             ]
         ),
-        .target(
-            name: "PhotonMediaKitUI",
-            dependencies: [
-                "PhotonMediaKit",
-                "PhotonUtilityKit",
-            ]
-        ),
         .testTarget(
             name: "PhotonMediaKitTests",
             dependencies: ["PhotonMediaKit"]
         ),
-    ]
+    ],
+    swiftLanguageVersions: [.v5]
 )

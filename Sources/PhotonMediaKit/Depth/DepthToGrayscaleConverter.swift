@@ -9,7 +9,7 @@ import CoreVideo
 import Metal
 import AVFoundation
 import CoreImage
-import PhotonMediaKitObjc
+import MetalPerformanceShaders
 
 /// Copy from AVCamFilter example from Apple.
 /// The main target should contain the implementation of DepthToGrayscale+Native.metal
@@ -161,16 +161,42 @@ public class DepthToGrayscaleConverter {
             return nil
         }
         
+        guard let commandQueue = commandQueue else {
+            return nil
+        }
+        
+        guard let buffer = commandQueue.makeCommandBuffer() else {
+            return nil
+        }
+                
+        guard let minMaxDest = create2x1MetalTexture(pixelFormat: inputTextureFormat, device: metalDevice) else {
+            return nil
+        }
+        
         var min: Float = 0.0
         var max: Float = 0.0
-        minMaxFromPixelBuffer(pixelBuffer, &min, &max, inputTextureFormat)
+                
+        let minMax = MPSImageStatisticsMinAndMax(device: metalDevice)
+        minMax.encode(
+            commandBuffer: buffer,
+            sourceTexture: inputTexture,
+            destinationTexture: minMaxDest
+        )
+        
+        buffer.commit()
+        buffer.waitUntilCompleted()
+        
+        let result = getResult(format: inputTextureFormat, texture: minMaxDest)
+        
+        min = Float(result.min)
+        max = Float(result.max)
+                
         lowest = min
         highest = max
         range = DepthRenderParam(offset: lowest, range: highest - lowest)
         
         // Set up command queue, buffer, and encoder
-        guard let commandQueue = commandQueue,
-              let commandBuffer = commandQueue.makeCommandBuffer(),
+        guard let commandBuffer = commandQueue.makeCommandBuffer(),
               let commandEncoder = commandBuffer.makeComputeCommandEncoder() else {
             print("Failed to create Metal command queue")
             CVMetalTextureCacheFlush(textureCache!, 0)
@@ -198,5 +224,78 @@ public class DepthToGrayscaleConverter {
         commandBuffer.waitUntilCompleted()
         
         return outputPixelBuffer
+    }
+    
+    private func create2x1MetalTexture(
+        pixelFormat: MTLPixelFormat,
+        device: MTLDevice
+    ) -> MTLTexture? {
+        let textureDescriptor = MTLTextureDescriptor()
+        textureDescriptor.pixelFormat = pixelFormat
+        textureDescriptor.width = 2
+        textureDescriptor.height = 1
+        textureDescriptor.storageMode = .shared
+        textureDescriptor.usage = [.shaderWrite, .shaderRead]
+        
+        guard let texture = device.makeTexture(descriptor: textureDescriptor) else {
+            print("Failed to create Metal texture")
+            return nil
+        }
+        
+        return texture
+    }
+    
+    private func getStrideFor(format: MTLPixelFormat) -> Int? {
+        if format == .r16Float {
+            return MemoryLayout<Float16>.stride
+        } else if format == .r32Float {
+            return MemoryLayout<Float>.stride
+        }
+        
+        return nil
+    }
+    
+    private func getResult(format: MTLPixelFormat, texture: MTLTexture) -> (min: Float, max: Float) {
+        var min: Float = 0.0
+        var max: Float = 0.0
+        
+        if format == .r16Float {
+            var minR16Float: Float16 = 0.0
+            var maxR16Float: Float16 = 0.0
+            getResult(texture: texture, min: &minR16Float, max: &maxR16Float)
+            min = Float(minR16Float)
+            max = Float(maxR16Float)
+        } else if format == .r32Float {
+            var minR32Float: Float = 0.0
+            var maxR32Float: Float = 0.0
+            getResult(texture: texture, min: &minR32Float, max: &maxR32Float)
+            min = Float(minR32Float)
+            max = Float(maxR32Float)
+        }
+        
+        return (min, max)
+    }
+    
+    private func getResult<T: FloatingPoint>(texture: MTLTexture, min: inout T, max: inout T) {
+        var result = Array(repeating: T(0), count: 2)
+        
+        result.withUnsafeMutableBytes { buffer in
+            if let pointer = buffer.baseAddress {
+                texture.getBytes(
+                    pointer,
+                    bytesPerRow: 2 * 1 * MemoryLayout<T>.stride,
+                    from: MTLRegion(origin: .init(x: 0, y: 0, z: 0), size: .init(width: 2, height: 1, depth: 1)),
+                    mipmapLevel: 0
+                )
+            }
+        }
+        
+        if let minValue = result[safeIndex: 0] {
+            min = minValue
+        }
+        
+        if let maxValue = result[safeIndex: 1] {
+            max = maxValue
+        }
     }
 }

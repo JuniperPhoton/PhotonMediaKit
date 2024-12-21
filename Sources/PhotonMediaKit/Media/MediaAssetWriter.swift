@@ -96,24 +96,29 @@ public class MediaAssetWriter {
         return false
     }
     
-    public func createOrGetCollection(title: String) async -> PHAssetCollection? {
-        let getCollection = {
-            let fetchOptions = PHFetchOptions()
-            fetchOptions.predicate = NSPredicate(format: "title = %@", title)
-            
-            return PHAssetCollection
-                .fetchAssetCollections(with: .album, subtype: .any, options: fetchOptions)
-                .firstObject
-        }
+    /// Try get the `PHAssetCollection` with the title. See also ``createOrGetCollection(title:)``.
+    ///
+    /// - parameter title: The title of the collection.
+    /// - returns: The `PHAssetCollection` if found, otherwise nil.
+    public func tryGetCollection(title: String) -> PHAssetCollection? {
+        let fetchOptions = PHFetchOptions()
+        fetchOptions.predicate = NSPredicate(format: "title = %@", title)
         
+        return PHAssetCollection
+            .fetchAssetCollections(with: .album, subtype: .any, options: fetchOptions)
+            .firstObject
+    }
+    
+    /// Create or get the `PHAssetCollection` with the title.
+    public func createOrGetCollection(title: String) async -> PHAssetCollection? {
         return await withCheckedContinuation { continuation in
-            if let collection = getCollection() {
+            if let collection = tryGetCollection(title: title) {
                 continuation.resume(returning: collection)
             } else {
                 PHPhotoLibrary.shared().performChanges {
                     let _ = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: title)
                 } completionHandler: { success, error in
-                    if success, let collection = getCollection() {
+                    if success, let collection = self.tryGetCollection(title: title) {
                         continuation.resume(returning: collection)
                     } else {
                         continuation.resume(returning: nil)

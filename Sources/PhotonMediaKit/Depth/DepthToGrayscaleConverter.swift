@@ -169,7 +169,10 @@ public class DepthToGrayscaleConverter {
             return nil
         }
                 
-        guard let minMaxDest = create2x1MetalTexture(pixelFormat: inputTextureFormat, device: metalDevice) else {
+        // For macOS Catalyst, it doesn't support Float 16.
+        // We must use 32 bit float here.
+        let minMaxDestFormat = MTLPixelFormat.r32Float
+        guard let minMaxDest = create2x1MetalTexture(pixelFormat: minMaxDestFormat, device: metalDevice) else {
             return nil
         }
         
@@ -186,10 +189,14 @@ public class DepthToGrayscaleConverter {
         buffer.commit()
         buffer.waitUntilCompleted()
         
-        let result = getResult(format: inputTextureFormat, texture: minMaxDest)
+        let result = getResult(texture: minMaxDest)
         
         min = Float(result.min)
         max = Float(result.max)
+        
+        if min == 0.0 && max == 0.0 {
+            return nil
+        }
                 
         lowest = min
         highest = max
@@ -245,45 +252,32 @@ public class DepthToGrayscaleConverter {
         return texture
     }
     
-    private func getStrideFor(format: MTLPixelFormat) -> Int? {
-        if format == .r16Float {
-            return MemoryLayout<Float16>.stride
-        } else if format == .r32Float {
-            return MemoryLayout<Float>.stride
+    /// Read the texture as bytes and get the result, assuming the texture is r32Float.
+    private func getResult(texture: MTLTexture) -> (min: Float, max: Float) {
+        guard texture.pixelFormat == .r32Float else {
+            return (0.0, 0.0)
         }
         
-        return nil
-    }
-    
-    private func getResult(format: MTLPixelFormat, texture: MTLTexture) -> (min: Float, max: Float) {
         var min: Float = 0.0
         var max: Float = 0.0
         
-        if format == .r16Float {
-            var minR16Float: Float16 = 0.0
-            var maxR16Float: Float16 = 0.0
-            getResult(texture: texture, min: &minR16Float, max: &maxR16Float)
-            min = Float(minR16Float)
-            max = Float(maxR16Float)
-        } else if format == .r32Float {
-            var minR32Float: Float = 0.0
-            var maxR32Float: Float = 0.0
-            getResult(texture: texture, min: &minR32Float, max: &maxR32Float)
-            min = Float(minR32Float)
-            max = Float(maxR32Float)
-        }
+        var minR32Float: Float = 0.0
+        var maxR32Float: Float = 0.0
+        getResult(texture: texture, stride: MemoryLayout<Float>.stride, min: &minR32Float, max: &maxR32Float)
+        min = Float(minR32Float)
+        max = Float(maxR32Float)
         
         return (min, max)
     }
     
-    private func getResult<T: FloatingPoint>(texture: MTLTexture, min: inout T, max: inout T) {
-        var result = Array(repeating: T(0), count: 2)
+    private func getResult(texture: MTLTexture, stride: Int, min: inout Float, max: inout Float) {
+        var result = Array(repeating: Float(0), count: 2)
         
         result.withUnsafeMutableBytes { buffer in
             if let pointer = buffer.baseAddress {
                 texture.getBytes(
                     pointer,
-                    bytesPerRow: 2 * 1 * MemoryLayout<T>.stride,
+                    bytesPerRow: 2 * 1 * stride,
                     from: MTLRegion(origin: .init(x: 0, y: 0, z: 0), size: .init(width: 2, height: 1, depth: 1)),
                     mipmapLevel: 0
                 )

@@ -746,14 +746,14 @@ public actor MediaAssetLoader {
         
         LibLogger.mediaLoader.log("begin enumerateObjects all photos")
         
-        let rawImages = fetchAssetWithRes(
+        let assets = fetchAssetWithRes(
             allPhotos: allPhotos,
             loadAssetResourcesInPlaceTypes: loadAssetResourcesInPlaceTypes
         )
         
-        LibLogger.mediaLoader.log("end enumerateObjects all photos \(rawImages.count)")
+        LibLogger.mediaLoader.log("end enumerateObjects all photos \(assets.count)")
         
-        return PHFetchTraceableResult(allPhotos, rawImages)
+        return PHFetchTraceableResult(allPhotos, assets)
     }
     
     @available(iOS 15.0, macOS 12.0, *)

@@ -211,22 +211,25 @@ public actor MediaAssetLoader {
         phAsset: PHAsset,
         option: FetchOption,
         version: MediaAssetVersion,
-        prefersHighDynamicRange: Bool
+        prefersHighDynamicRange: Bool,
+        isNetworkAccessAllowed: Bool = false
     ) async -> UIImage? {
         LibLogger.mediaLoader.log("fetchUIImage for \(phAsset.localIdentifier), option \(option), version: \(version)")
         switch option {
         case .thumbnail:
-            return await fetchThumbnailUIImage(phAsset: phAsset, version: version)
+            return await fetchThumbnailUIImage(phAsset: phAsset, version: version, isNetworkAccessAllowed: isNetworkAccessAllowed)
         case .full:
             return await fetchFullUIImage(
                 phAsset: phAsset,
                 version: version,
-                prefersHighDynamicRange: prefersHighDynamicRange
+                prefersHighDynamicRange: prefersHighDynamicRange,
+                isNetworkAccessAllowed: isNetworkAccessAllowed
             )
         case .size(w: let w, h: let h):
             return await fetchThumbnailUIImage(
                 phAsset: phAsset,
                 version: version,
+                isNetworkAccessAllowed: isNetworkAccessAllowed,
                 size: CGSize(width: w, height: h)
             )
         }
@@ -278,7 +281,8 @@ public actor MediaAssetLoader {
     public func fetchFullUIImage(
         phAsset: PHAsset,
         version: MediaAssetVersion,
-        prefersHighDynamicRange: Bool
+        prefersHighDynamicRange: Bool,
+        isNetworkAccessAllowed: Bool = true
     ) async -> UIImage? {
         return await withCheckedContinuation { continuation in
             if Task.isCancelled {
@@ -290,7 +294,7 @@ public actor MediaAssetLoader {
             let cacheManager = PHCachingImageManager.default()
             
             let o = PHImageRequestOptions()
-            o.isNetworkAccessAllowed = true
+            o.isNetworkAccessAllowed = isNetworkAccessAllowed
             o.isSynchronous = true
             o.version = version.getPHImageRequestOptionsVersion()
             

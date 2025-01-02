@@ -28,7 +28,7 @@ public struct PHFetchTraceableResult {
 }
 
 /// Use this class to help you fetch media from PhotoKit and load the data of the assets.
-public actor MediaAssetLoader {
+public class MediaAssetLoader {
     public static let defaultThumbnailSize = CGSize(width: 400, height: 400)
     
     public enum FetchOption: Equatable, CustomStringConvertible {

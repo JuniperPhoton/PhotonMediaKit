@@ -30,6 +30,7 @@ public struct PHFetchTraceableResult {
 /// Use this class to help you fetch media from PhotoKit and load the data of the assets.
 public class MediaAssetLoader {
     public static let defaultThumbnailSize = CGSize(width: 400, height: 400)
+    public static let shared = MediaAssetLoader()
     
     public enum FetchOption: Equatable, CustomStringConvertible {
         case thumbnail
@@ -97,6 +98,7 @@ public class MediaAssetLoader {
         let result: T?
     }
     
+    @available(*, deprecated, message: "Use .shared instead")
     public init() {
         // empty
     }

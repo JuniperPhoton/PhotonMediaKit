@@ -660,11 +660,11 @@ public class MediaAssetLoader {
     
     @available(iOS 15.0, macOS 12.0, *)
     public func fetchPHAsset(
-        itemIdentifier: String,
+        of itemIdentifier: String,
         collection: PHAssetCollection? = nil,
-        predicates: [NSPredicate] = []
+        predicates: @autoclosure () -> [NSPredicate] = []
     ) async -> PHAsset? {
-        var compoundPredicates = predicates
+        var compoundPredicates = predicates()
         compoundPredicates.append(NSPredicate(format: "localIdentifier == %@", itemIdentifier))
         
         return await fetchPhotosByCollection(
@@ -680,13 +680,23 @@ public class MediaAssetLoader {
         }?.result?.firstObject
     }
     
+    @available(*, deprecated, message: "Use fetchPHAsset(of:collection:predicates:) instead")
     @available(iOS 15.0, macOS 12.0, *)
-    public func fetchPHAssets(
-        itemIdentifiers: [String],
+    public func fetchPHAsset(
+        itemIdentifier: String,
         collection: PHAssetCollection? = nil,
         predicates: [NSPredicate] = []
+    ) async -> PHAsset? {
+        return await fetchPHAsset(of: itemIdentifier, collection: collection, predicates: predicates)
+    }
+    
+    @available(iOS 15.0, macOS 12.0, *)
+    public func fetchPHAssets(
+        of itemIdentifiers: [String],
+        collection: PHAssetCollection? = nil,
+        predicates: @autoclosure () -> [NSPredicate] = []
     ) async -> PHFetchTraceableResult? {
-        var compoundPredicates = predicates
+        var compoundPredicates = predicates()
         compoundPredicates.append(NSPredicate(format: "localIdentifier in %@", itemIdentifiers))
         
         return await fetchPhotosByCollection(
@@ -699,6 +709,16 @@ public class MediaAssetLoader {
                 subpredicates: compoundPredicates
             )
         }
+    }
+    
+    @available(*, deprecated, message: "Use fetchPHAssets(of:collection:predicates:) instead")
+    @available(iOS 15.0, macOS 12.0, *)
+    public func fetchPHAssets(
+        itemIdentifiers: [String],
+        collection: PHAssetCollection? = nil,
+        predicates: [NSPredicate] = []
+    ) async -> PHFetchTraceableResult? {
+        return await fetchPHAssets(of: itemIdentifiers, collection: collection, predicates: predicates)
     }
     
     @available(iOS 15.0, macOS 12.0, *)
